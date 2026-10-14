@@ -1,6 +1,6 @@
 package duoc.example.gestionoportunidades.ui
 
-
+import androidx.compose.foundation.layout.Alignment
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,42 +23,42 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+// Importamos la función viewModel() que provee la instancia del ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+// Importaciones de nuestras clases creadas en el proyecto
+import duoc.example.gestionoportunidades.data.Oportunidad
 import duoc.example.gestionoportunidades.ui.theme.GestionOportunidadesTheme
+import duoc.example.gestionoportunidades.ui.viewmodel.OportunidadViewModel
 
 /**
- * PANTALLA DE REGISTRO DE OPORTUNIDADES COMERCIALES
+ * PANTALLA DE REGISTRO INTEGRADA CON VIEWMODEL (PASO 3)
  *
- * Esta función @Composable representa la interfaz gráfica completa del formulario.
- * Incorpora los conceptos clave de la Clase 2 de Jetpack Compose:
- * 1. Manejo de estados (remember + mutableStateOf) para texto y valores booleanos.
- * 2. Maquetación estructurada con Column (vertical) y Row (horizontal).
- * 3. Controles interactivos: OutlinedTextField, Switch, Checkbox y Button.
- * 4. Impresión por consola (println) dentro del evento onClick.
+ * La pantalla ahora recibe una instancia de 'OportunidadViewModel'.
+ * Esto nos permite delegar la responsabilidad del almacenamiento al ViewModel.
  */
 @Composable
-fun RegistroOportunidadScreen(modifier: Modifier = Modifier) {
-
-    // --- 1. ESTADOS REACTIVOS DE LA INTERFAZ ---
-    // 'remember' conserva el estado en memoria durante las recomposiciones.
-    // 'mutableStateOf' notifica a Compose cuando un valor cambia para redibujar la UI automáticamente.
-
-    // Campos de texto del formulario (Clase 1 y 2)
+fun RegistroOportunidadScreen(
+    modifier: Modifier = Modifier,
+    // Inyectamos el ViewModel usando la función predeterminada de Compose
+    viewModel: OportunidadViewModel = viewModel()
+) {
+    // --- 1. ESTADOS LOCALES DE LOS CAMPOS DE TEXTO ---
     var nombreEvento by remember { mutableStateOf("") }
     var organizacion by remember { mutableStateOf("") }
     var correoContacto by remember { mutableStateOf("") }
+    var tipoEvento by remember { mutableStateOf("") }
 
-    // Estados booleanos para los controles de selección de la Clase 2 (Switch y Checkbox)
+    // --- 2. ESTADOS LOCALES BOOLEANOS (SWITCH Y CHECKBOX) ---
     var esAltaAfluencia by remember { mutableStateOf(false) }
     var requiereStand by remember { mutableStateOf(false) }
 
-    // --- 2. ESTRUCTURA CONTENEDORA PRINCIPAL (Column) ---
-    // Organiza todos los elementos gráficos de forma vertical (de arriba a abajo).
+    // --- 3. DISEÑO DE LA PANTALLA (Column) ---
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(24.dp)
     ) {
-        // Título estilizado con la tipografía del tema de la app
         Text(
             text = "Registro de Oportunidad Comercial",
             style = MaterialTheme.typography.headlineSmall
@@ -66,7 +66,7 @@ fun RegistroOportunidadScreen(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // CAMPO 1: Nombre del Evento u Oportunidad
+        // Campo 1: Nombre del Evento
         OutlinedTextField(
             value = nombreEvento,
             onValueChange = { nombreEvento = it },
@@ -76,7 +76,7 @@ fun RegistroOportunidadScreen(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // CAMPO 2: Empresa u Organización Ficticia
+        // Campo 2: Empresa u Organización
         OutlinedTextField(
             value = organizacion,
             onValueChange = { organizacion = it },
@@ -86,7 +86,7 @@ fun RegistroOportunidadScreen(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // CAMPO 3: Correo de Contacto Corporativo
+        // Campo 3: Correo del Contacto
         OutlinedTextField(
             value = correoContacto,
             onValueChange = { correoContacto = it },
@@ -94,10 +94,19 @@ fun RegistroOportunidadScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth()
         )
 
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Campo 4: Tipo de Evento
+        OutlinedTextField(
+            value = tipoEvento,
+            onValueChange = { tipoEvento = it },
+            label = { Text("Tipo de Evento (ej. Feria, Jornada, Municipal)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- CONTROL 1: SWITCH + ETIQUETA (Disposición Horizontal con Row) ---
-        // Row alinea el Switch y el Texto uno al lado del otro
+        // Control 1: Switch (Alta Afluencia)
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -112,7 +121,7 @@ fun RegistroOportunidadScreen(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // --- CONTROL 2: CHECKBOX + ETIQUETA (Disposición Horizontal con Row) ---
+        // Control 2: Checkbox (Requiere Stand)
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -127,16 +136,36 @@ fun RegistroOportunidadScreen(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // --- BOTÓN DE ACCIÓN CON LOGCAT / CONSOLA ---
+        // --- 4. ACCIÓN DEL BOTÓN CON INTEGRACIÓN AL VIEWMODEL ---
         Button(
             onClick = {
-                // Requerimiento de Clase 2: Impresión por consola de todos los estados actuales
-                println("=== NUEVA OPORTUNIDAD REGISTRADA ===")
-                println("Nombre Evento: $nombreEvento")
-                println("Organización: $organizacion")
-                println("Correo Contacto: $correoContacto")
-                println("Alta Afluencia (Switch): $esAltaAfluencia")
-                println("Requiere Stand (Checkbox): $requiereStand")
+                // Validación básica: al menos Nombre y Organización deben tener texto
+                if (nombreEvento.isNotBlank() && organizacion.isNotBlank()) {
+
+                    // a) Instanciamos la Data Class con la información del formulario
+                    val nuevaOportunidad = Oportunidad(
+                        id = (1..1000).random(),
+                        nombreEvento = nombreEvento,
+                        organizacion = organizacion,
+                        correoContacto = correoContacto,
+                        tipoEvento = if (tipoEvento.isNotBlank()) tipoEvento else "Feria empresarial",
+                        prioridad = "Alta",
+                        estado = "Identificada",
+                        esAltaAfluencia = esAltaAfluencia,
+                        requiereStand = requiereStand
+                    )
+
+                    // b) Guardamos el objeto en la lista del ViewModel
+                    viewModel.agregarOportunidad(nuevaOportunidad)
+
+                    // c) REQUERIMIENTO UX: Limpiamos los campos del formulario tras registrar
+                    nombreEvento = ""
+                    organizacion = ""
+                    correoContacto = ""
+                    tipoEvento = ""
+                    esAltaAfluencia = false
+                    requiereStand = false
+                }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -145,8 +174,9 @@ fun RegistroOportunidadScreen(modifier: Modifier = Modifier) {
     }
 }
 
-// --- VISTA PREVIA PARA ANDROID STUDIO ---
-// Permite previsualizar la pantalla en el panel Split/Design sin gastar recursos cargando el emulador.
+
+
+// --- VISTA PREVIA (Preview) ---
 @Preview(showBackground = true)
 @Composable
 fun RegistroOportunidadPreview() {
