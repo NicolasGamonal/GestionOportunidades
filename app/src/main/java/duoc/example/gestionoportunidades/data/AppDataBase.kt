@@ -5,6 +5,8 @@ import androidx.room3.Database
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.agencia.oportunidades.data.EvidenciaDao
+import com.agencia.oportunidades.model.Evidencia
 import duoc.example.gestionoportunidades.model.Usuario
 import duoc.example.gestionoportunidades.model.Organizacion
 import duoc.example.gestionoportunidades.model.Contacto
@@ -15,10 +17,16 @@ import duoc.example.gestionoportunidades.data.local.dao.OrganizacionDao
 import duoc.example.gestionoportunidades.data.local.dao.ContactoDao
 import duoc.example.gestionoportunidades.data.local.dao.OportunidadDao
 import duoc.example.gestionoportunidades.data.local.dao.SeguimientoDao
-import java.util.concurrent.Executors
 
 @Database(
-    entities = [Usuario::class, Organizacion::class, Contacto::class, Oportunidad::class, Seguimiento::class],
+    entities = [
+        Usuario::class,
+        Organizacion::class,
+        Contacto::class,
+        Oportunidad::class,
+        Seguimiento::class,
+        Evidencia::class
+    ],
     version = 1,
     exportSchema = false
 )
@@ -29,6 +37,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun contactoDao(): ContactoDao
     abstract fun oportunidadDao(): OportunidadDao
     abstract fun seguimientoDao(): SeguimientoDao
+    abstract fun evidenciaDao(): EvidenciaDao
 
     companion object {
         @Volatile
@@ -42,11 +51,9 @@ abstract class AppDatabase : RoomDatabase() {
                     "gestion_oportunidades_db"
                 )
                     .addCallback(object : RoomDatabase.Callback() {
-                        // Corregido para Room 3: Usa la nueva firma con SQLiteConnection
                         override suspend fun onCreate(connection: androidx.sqlite.SQLiteConnection) {
                             super.onCreate(connection)
 
-                            // En Room 3, al ser una función 'suspend', podemos llamar directamete a Room
                             val database = getDatabase(context)
 
                             // 3 Ejecutivos Comerciales ficticios de prueba
@@ -74,4 +81,3 @@ abstract class AppDatabase : RoomDatabase() {
         }
     }
 }
-

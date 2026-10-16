@@ -4,17 +4,28 @@ import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
+import androidx.room3.Update
 import duoc.example.gestionoportunidades.model.Seguimiento
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SeguimientoDao {
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertarSeguimiento(seguimiento: Seguimiento): Long
+
+    @Update
+    suspend fun actualizarSeguimiento(seguimiento: Seguimiento)
 
     @Query("SELECT * FROM seguimientos WHERE idOportunidad = :idOportunidad ORDER BY fechaHora DESC")
     fun obtenerHistorialPorOportunidad(idOportunidad: Long): Flow<List<Seguimiento>>
 
     @Query("SELECT * FROM seguimientos WHERE fechaProximo < :fechaActual AND tipoAccion != 'Cambio de estado'")
     fun obtenerSeguimientosAtrasados(fechaActual: Long): Flow<List<Seguimiento>>
+
+    @Query("SELECT * FROM seguimientos WHERE idUsuario = :idUsuario AND fechaProximo >= :fechaActual ORDER BY fechaProximo ASC")
+    fun obtenerPendientesPorUsuario(idUsuario: Long, fechaActual: Long): Flow<List<Seguimiento>>
+
+    @Query("SELECT * FROM seguimientos WHERE idUsuario = :idUsuario ORDER BY fechaHora DESC")
+    fun obtenerPorUsuario(idUsuario: Long): Flow<List<Seguimiento>>
 }

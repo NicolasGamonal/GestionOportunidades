@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import androidx.room3.Entity
+import duoc.example.gestionoportunidades.model.Oportunidad
 
 @Entity(
     tableName = "evidencias",
@@ -22,5 +22,5 @@ data class Evidencia(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val rutaArchivo: String,
     val fecha: Long,
-    val idOportunidad: Int
+    val idOportunidad: Long
 )
