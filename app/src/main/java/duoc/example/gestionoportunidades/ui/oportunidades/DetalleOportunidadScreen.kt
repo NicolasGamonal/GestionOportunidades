@@ -16,7 +16,8 @@ import duoc.example.gestionoportunidades.ui.components.StatusChip
 @Composable
 fun DetalleOportunidadScreen(
     oportunidad: Oportunidad,
-    onVolver: () -> Unit
+    onVolver: () -> Unit,
+    onVerHistorial: () -> Unit = {}
 ) {
     // Estado local simulado para el cambio de estado que pide J2
     var estadoActual by remember { mutableStateOf(oportunidad.estado) }
@@ -34,7 +35,8 @@ fun DetalleOportunidadScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = oportunidad.nombreEvento,
+                // Ajustado al modelo de datos oficial ("nombre" en lugar de "nombreEvento")
+                text = oportunidad.nombre,
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
@@ -42,29 +44,44 @@ fun DetalleOportunidadScreen(
             StatusChip(estado = estadoActual)
         }
 
-        // Usamos HorizontalDivider en lugar de Divider para Material 3
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        // Datos del detalle requeridos en J2
-        DetalleItem(titulo = "Organización", valor = oportunidad.organizacion)
-        DetalleItem(titulo = "Contacto", valor = oportunidad.correoContacto)
+        // Datos del detalle requeridos en J2 ajustados al modelo oficial[cite: 3]
         DetalleItem(titulo = "Tipo de Evento", valor = oportunidad.tipoEvento)
+        // Nota: organizacion y contacto provienen de las claves foráneas, aquí los simulamos
+        DetalleItem(titulo = "Comuna", valor = oportunidad.comuna)
+        DetalleItem(titulo = "Público Esperado", valor = oportunidad.publicoEsperado.toString())
         DetalleItem(titulo = "Prioridad", valor = oportunidad.prioridad)
-        DetalleItem(titulo = "¿Alta Afluencia?", valor = if(oportunidad.esAltaAfluencia) "Sí" else "No")
-        DetalleItem(titulo = "¿Requiere Stand?", valor = if(oportunidad.requiereStand) "Sí" else "No")
+        DetalleItem(titulo = "Costo Referencial", valor = "$${oportunidad.costoReferencial}")
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        Text(text = "Fechas del evento:", fontWeight = FontWeight.Bold)
+        DetalleItem(titulo = "Inicio", valor = oportunidad.fechaInicio)
+        DetalleItem(titulo = "Término", valor = oportunidad.fechaTermino)
+
+        // ---> BOTÓN DE CALENDARIO NATIVO (Tarea J6)[cite: 3] <---
+        duoc.example.gestionoportunidades.ui.nativo.BotonAgregarCalendario(
+            titulo = "Evento: ${oportunidad.nombre}",
+            descripcion = "Activación corporativa en ${oportunidad.comuna}. Tipo: ${oportunidad.tipoEvento}",
+            fechaString = oportunidad.fechaInicio,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
         Text(
             text = "Observaciones:",
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 8.dp)
         )
+        Text(text = oportunidad.observaciones, style = MaterialTheme.typography.bodyLarge)
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Botón para simular el avance de estado (luego usará Permisos.kt de tu compañero)
+        // Botón para simular el avance de estado
         Button(
             onClick = {
-                // Simulación simple de avance de estado
                 estadoActual = if (estadoActual == "Identificada") "Contacto realizado" else "Propuesta enviada"
             },
             modifier = Modifier.fillMaxWidth()
@@ -77,6 +94,19 @@ fun DetalleOportunidadScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Volver a la lista")
+        }
+        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+        // Cámara nativa (Tarea J5)[cite: 3]
+        duoc.example.gestionoportunidades.ui.nativo.SeccionEvidencia()
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onVerHistorial,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+        ) {
+            Text("Ver Historial de Gestión")
         }
     }
 }

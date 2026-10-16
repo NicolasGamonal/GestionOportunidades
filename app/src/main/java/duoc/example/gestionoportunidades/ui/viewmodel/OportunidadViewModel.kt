@@ -21,7 +21,7 @@ class OportunidadViewModel : ViewModel() {
         _listaOportunidades.add(nuevaOportunidad)
 
         println("=== OPORTUNIDAD GUARDADA EN VIEWMODEL ===")
-        println("Evento: ${nuevaOportunidad.nombreEvento}")
+        println("Evento: ${nuevaOportunidad.nombre}")
         println("Total acumulado: ${_listaOportunidades.size}")
     }
 }

@@ -10,7 +10,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import duoc.example.gestionoportunidades.ui.RegistroOportunidadScreen
 import duoc.example.gestionoportunidades.ui.theme.GestionOportunidadesTheme
 import duoc.example.gestionoportunidades.ui.navigation.NavegacionPrincipal
 import duoc.example.gestionoportunidades.ui.theme.GestionOportunidadesTheme

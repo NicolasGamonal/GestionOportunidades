@@ -27,13 +27,36 @@ fun OportunidadesScreen(
 
     // Datos de ejemplo según pide la planificación
     val oportunidadesMock = listOf(
-        // Nota: Asegúrate de que los parámetros coincidan con tu data class Oportunidad actual
-        Oportunidad(id = 1, nombreEvento = "Feria Empresarial Sur", organizacion = "Empresa Alpha",
-            correoContacto = "contacto@alpha.cl", estado = "Identificada", prioridad = "Alta"),
-        Oportunidad(id = 2, nombreEvento = "Activación Municipal",organizacion = "Muni Florida",
-            correoContacto = "eventos@florida.cl", estado = "Contacto realizado", prioridad = "Media"),
-        Oportunidad(id = 3, nombreEvento = "Jornada de Beneficios", organizacion = "Corpo Santiago",
-            correoContacto = "rrhh@corposantiago.cl", estado = "Propuesta enviada", prioridad = "Alta")
+        duoc.example.gestionoportunidades.data.Oportunidad(
+            id = 1,
+            nombre = "Feria Tecnológica Sur",
+            tipoEvento = "Feria",
+            fechaDeteccion = "2026-10-10",
+            fechaInicio = "2026-10-25 10:00",
+            fechaTermino = "2026-10-25 18:00",
+            comuna = "Puente Alto",
+            publicoEsperado = 1000,
+            prioridad = "Alta",
+            estado = "Identificada",
+            costoReferencial = 250000,
+            observaciones = "Gran oportunidad de visibilidad.",
+            idOrganizacion = 1
+        ),
+        duoc.example.gestionoportunidades.data.Oportunidad(
+            id = 2,
+            nombre = "Jornada de Salud",
+            tipoEvento = "Jornada",
+            fechaDeteccion = "2026-10-12",
+            fechaInicio = "2026-11-05 09:00",
+            fechaTermino = "2026-11-05 13:00",
+            comuna = "La Florida",
+            publicoEsperado = 300,
+            prioridad = "Media",
+            estado = "En Proceso",
+            costoReferencial = 100000,
+            observaciones = "Se requiere confirmación de stand.",
+            idOrganizacion = 2
+        )
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -111,7 +134,7 @@ fun OportunidadCard(oportunidad: Oportunidad, onClick: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = oportunidad.nombreEvento, // Ajusta según tu entidad Oportunidad
+                    text = oportunidad.nombre, // Ajusta según tu entidad Oportunidad
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f)
                 )
