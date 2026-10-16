@@ -145,7 +145,7 @@ fun RegistroOportunidadScreen(
                     val nuevaOportunidad = Oportunidad(
                         idOportunidad = 0, // Room lo autogenera automáticamente gracias a @PrimaryKey(autoGenerate = true)
                         nombre = nombreEvento, // Cambiado de 'nombreEvento' a 'nombre'
-                        tipoEventos = if (tipoEvento.isNotBlank()) tipoEvento else "Feria empresarial",
+                        tipoEvento = if (tipoEvento.isNotBlank()) tipoEvento else "Feria empresarial",
                         fechaDeteccion = System.currentTimeMillis(), // Guarda la fecha/hora actual en milisegundos
                         fechaInicio = System.currentTimeMillis(),    // Reemplazar por la variable del DatePicker de Josue
                         fechaTermino = System.currentTimeMillis() + 86400000, // Próximo día por defecto

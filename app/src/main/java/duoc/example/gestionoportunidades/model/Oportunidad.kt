@@ -33,7 +33,7 @@ data class Oportunidad(
     @PrimaryKey(autoGenerate = true)
     val idOportunidad: Long = 0,
     val nombre: String,
-    val tipoEventos: String,
+    val tipoEvento: String,
     val fechaDeteccion: Long,
     val fechaInicio: Long,
     val fechaTermino: Long,

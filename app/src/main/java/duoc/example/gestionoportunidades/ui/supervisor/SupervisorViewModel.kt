@@ -65,4 +65,25 @@ class SupervisorViewModel(
     fun limpiarMensajes() {
         _uiState.update { it.copy(mensajeExito = null, mensajeError = null) }
     }
+    fun confirmarOportunidad(oportunidad: Oportunidad) {
+        viewModelScope.launch {
+            try {
+                oportunidadRepository.actualizarEstado(oportunidad.idOportunidad, "Confirmada")
+                _uiState.update { it.copy(mensajeExito = "Oportunidad confirmada") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(mensajeError = "Error: ${e.localizedMessage}") }
+            }
+        }
+    }
+
+    fun descartarOportunidad(oportunidad: Oportunidad) {
+        viewModelScope.launch {
+            try {
+                oportunidadRepository.actualizarEstado(oportunidad.idOportunidad, "Descartada")
+                _uiState.update { it.copy(mensajeExito = "Oportunidad descartada") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(mensajeError = "Error: ${e.localizedMessage}") }
+            }
+        }
+    }
 }
