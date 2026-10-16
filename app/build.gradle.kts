@@ -48,6 +48,7 @@ dependencies {
     implementation(libs.androidx.room3.common)
     implementation(libs.androidx.room3.runtime)
     implementation(libs.androidx.sqlite.ktx)
+    implementation(libs.mediation.test.suite)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
