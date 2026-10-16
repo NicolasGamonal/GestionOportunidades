@@ -6,9 +6,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import duoc.example.gestionoportunidades.ui.RegistroOportunidadScreen
+import duoc.example.gestionoportunidades.ui.theme.GestionOportunidadesTheme
+import duoc.example.gestionoportunidades.ui.navigation.NavegacionPrincipal
 import duoc.example.gestionoportunidades.ui.theme.GestionOportunidadesTheme
 
 /**
@@ -31,12 +35,13 @@ class MainActivity : ComponentActivity() {
         // Dibuja el contenido gráfico con Compose
         setContent {
             GestionOportunidadesTheme {
-                // Scaffold provee la estructura de diseño base y calcula los márgenes de ventana (innerPadding)
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    // Invocamos la pantalla principal pasándole el margen seguro
-                    RegistroOportunidadScreen(
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                // 2. Usamos un Surface para que el fondo tome el color "background" de tu tema
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    // 3. ¡Aquí llamamos a la navegación que acabas de crear!
+                    NavegacionPrincipal()
                 }
             }
         }
