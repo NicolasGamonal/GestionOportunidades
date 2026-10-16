@@ -3,42 +3,82 @@ package duoc.example.gestionoportunidades
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import duoc.example.gestionoportunidades.ui.RegistroOportunidadScreen
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import duoc.example.gestionoportunidades.data.local.AppDatabase
+import duoc.example.gestionoportunidades.data.repository.AuthRepository
+import duoc.example.gestionoportunidades.data.repository.OportunidadRepository
+import duoc.example.gestionoportunidades.ui.auth.LoginScreen
+import duoc.example.gestionoportunidades.ui.auth.AuthViewModel
+import duoc.example.gestionoportunidades.ui.supervisor.SupervisorViewModel
+import duoc.example.gestionoportunidades.ui.alertas.DashboardViewModel
+import duoc.example.gestionoportunidades.ui.oportunidades.OportunidadViewModel
 import duoc.example.gestionoportunidades.ui.theme.GestionOportunidadesTheme
 
-/**
- * ACTIVIDAD PRINCIPAL (MainActivity)
- *
- * En el desarrollo moderno con Jetpack Compose seguimos la arquitectura "Single Activity".
- * Esta clase es el ÚNICO punto de entrada de la app y cumple con:
- * 1. Inicializar el contenedor gráfico de Compose con setContent.
- * 2. Aplicar el tema visual general de la aplicación (GestionOportunidadesTheme).
- * 3. Envolver la vista en un Scaffold para respetar los bordes seguros de la pantalla.
- * 4. Invocar a la pantalla RegistroOportunidadScreen() ubicada en el paquete 'ui'.
- */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Habilita que la aplicación se expanda de borde a borde en la pantalla
-        enableEdgeToEdge()
-
-        // Dibuja el contenido gráfico con Compose
         setContent {
             GestionOportunidadesTheme {
-                // Scaffold provee la estructura de diseño base y calcula los márgenes de ventana (innerPadding)
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    // Invocamos la pantalla principal pasándole el margen seguro
-                    RegistroOportunidadScreen(
-                        modifier = Modifier.padding(innerPadding)
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    val database = AppDatabase.getDatabase(applicationContext)
+
+                    val authRepository = AuthRepository(database.usuarioDao())
+                    val oportunidadRepository = OportunidadRepository(
+                        database.oportunidadDao(),
+                        database.organizacionDao(),
+                        database.contactoDao(),
+                        database.seguimientoDao()
+                    )
+
+                    // Usa la fábrica local definida abajo en el mismo archivo
+                    val authViewModel: AuthViewModel = viewModel(
+                        factory = LocalViewModelFactory(authRepository, oportunidadRepository)
+                    )
+
+                    LoginScreen(
+                        viewModel = authViewModel,
+                        onLoginExitoso = { rol, idUsuario ->
+                            println("--- LOGIN EXITOSO LOCAL ---")
+                            println("ID: $idUsuario - Rol: $rol")
+                        }
                     )
                 }
             }
+        }
+    }
+}
+
+// Fábrica local unificada para evitar problemas de paquetes o imports cruzados
+@Suppress("UNCHECKED_CAST")
+class LocalViewModelFactory(
+    private val authRepository: AuthRepository,
+    private val oportunidadRepository: OportunidadRepository
+) : ViewModelProvider.Factory {
+
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return when {
+            modelClass.isAssignableFrom(AuthViewModel::class.java) -> {
+                AuthViewModel(authRepository) as T
+            }
+            modelClass.isAssignableFrom(OportunidadViewModel::class.java) -> {
+                OportunidadViewModel(oportunidadRepository) as T
+            }
+            modelClass.isAssignableFrom(SupervisorViewModel::class.java) -> {
+                SupervisorViewModel(oportunidadRepository, authRepository) as T
+            }
+            modelClass.isAssignableFrom(DashboardViewModel::class.java) -> {
+                DashboardViewModel(oportunidadRepository) as T
+            }
+            else -> throw IllegalArgumentException("ViewModel Desconocido: ${modelClass.name}")
         }
     }
 }

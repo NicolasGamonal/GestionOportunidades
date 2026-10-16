@@ -1,4 +1,4 @@
-package duoc.example.gestionoportunidades.ui
+package duoc.example.gestionoportunidades.ui.oportunidades
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,11 +24,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 // Importamos la función viewModel() que provee la instancia del ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import duoc.example.gestionoportunidades.model.Oportunidad
 
 // Importaciones de nuestras clases creadas en el proyecto
-import duoc.example.gestionoportunidades.data.Oportunidad
 import duoc.example.gestionoportunidades.ui.theme.GestionOportunidadesTheme
-import duoc.example.gestionoportunidades.ui.viewmodel.OportunidadViewModel
 
 /**
  * PANTALLA DE REGISTRO INTEGRADA CON VIEWMODEL (PASO 3)
@@ -142,17 +141,24 @@ fun RegistroOportunidadScreen(
                 if (nombreEvento.isNotBlank() && organizacion.isNotBlank()) {
 
                     // a) Instanciamos la Data Class con la información del formulario
+                    // a) Instanciamos la Data Class con la información real del formulario en 3FN
                     val nuevaOportunidad = Oportunidad(
-                        id = (1..1000).random(),
-                        nombreEvento = nombreEvento,
-                        organizacion = organizacion,
-                        correoContacto = correoContacto,
+                        idOportunidad = 0, // Room lo autogenera automáticamente gracias a @PrimaryKey(autoGenerate = true)
+                        nombre = nombreEvento, // Cambiado de 'nombreEvento' a 'nombre'
                         tipoEvento = if (tipoEvento.isNotBlank()) tipoEvento else "Feria empresarial",
-                        prioridad = "Alta",
+                        fechaDeteccion = System.currentTimeMillis(), // Guarda la fecha/hora actual en milisegundos
+                        fechaInicio = System.currentTimeMillis(),    // Reemplazar por la variable del DatePicker de Josue
+                        fechaTermino = System.currentTimeMillis() + 86400000, // Próximo día por defecto
+                        comuna = "Santiago", // Campo obligatorio de la checklist (Ubicación)
+                        publicoEsperado = 100, // Reemplazar por la variable numérica del formulario
+                        prioridad = "ALTA",  // Reemplazar por la variable del Dropdown o RadioButton
                         estado = "Identificada",
-                        esAltaAfluencia = esAltaAfluencia,
-                        requiereStand = requiereStand
+                        costoReferencial = 0.0, // Reemplazar por el Double de la caja de texto
+                        observaciones = "Sin observaciones iniciales",
+                        idOrganizacion = 1L, // Llave foránea obligatoria (Debe apuntar a una Organización existente)
+                        idResponsable = null // Inicialmente sin asignar hasta que actúe el Supervisor Comercial
                     )
+
 
                     // b) Guardamos el objeto en la lista del ViewModel
                     viewModel.agregarOportunidad(nuevaOportunidad)
