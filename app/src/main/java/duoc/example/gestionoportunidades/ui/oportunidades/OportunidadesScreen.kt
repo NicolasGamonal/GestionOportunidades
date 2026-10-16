@@ -17,10 +17,13 @@ import duoc.example.gestionoportunidades.ui.components.StatusChip
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OportunidadesScreen() {
+fun OportunidadesScreen(
+    onVerDetalle: () -> Unit = {}
+) {
     // Estados temporales para la UI (MOCK mientras llega el ViewModel de Room)
     var searchQuery by remember { mutableStateOf("") }
     var mostrarFiltros by remember { mutableStateOf(false) }
+
 
     // Datos de ejemplo según pide la planificación
     val oportunidadesMock = listOf(
@@ -73,18 +76,29 @@ fun OportunidadesScreen() {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(oportunidadesMock) { oportunidad ->
-                    OportunidadCard(oportunidad)
+                    OportunidadCard(oportunidad = oportunidad, onClick = onVerDetalle)
                 }
+            }
+        }
+        LazyColumn(
+            // ...
+        ) {
+            items(oportunidadesMock) { oportunidad ->
+                OportunidadCard(
+                    oportunidad = oportunidad,
+                    onClick = onVerDetalle // <-- 2. Conectamos el clic de la tarjeta
+                )
             }
         }
     }
 }
 
 @Composable
-fun OportunidadCard(oportunidad: Oportunidad) {
+fun OportunidadCard(oportunidad: Oportunidad, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        onClick = onClick
     ) {
         Column(
             modifier = Modifier

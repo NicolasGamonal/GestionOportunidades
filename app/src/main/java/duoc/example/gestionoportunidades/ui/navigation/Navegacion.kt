@@ -22,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import duoc.example.gestionoportunidades.ui.components.TopBar
 import duoc.example.gestionoportunidades.ui.oportunidades.DetalleOportunidadScreen
 import duoc.example.gestionoportunidades.ui.oportunidades.FormularioOportunidadScreen
+import duoc.example.gestionoportunidades.ui.oportunidades.OportunidadesScreen
 import duoc.example.gestionoportunidades.ui.organizaciones.FormularioOrganizacionScreen
 import duoc.example.gestionoportunidades.ui.organizaciones.OrganizacionesScreen
 
@@ -86,11 +87,9 @@ fun NavegacionPrincipal() {
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = Ruta.Dashboard.ruta, // La app empieza en Login
+            startDestination = Ruta.Dashboard.ruta,
             modifier = Modifier.padding(paddingValues)
         ) {
-            // Aquí declaramos las pantallas. Por ahora ponemos Text de prueba.
-            // Más adelante reemplazaremos esto con los Screens correspondientes[cite: 1].
             composable(Ruta.Login.ruta) {
                 Text("Pantalla de Login (Compañero)")
             }
@@ -98,16 +97,23 @@ fun NavegacionPrincipal() {
                 Text("Dashboard (Compañero)")
             }
             composable(Ruta.Oportunidades.ruta) {
-                Text("Lista de Oportunidades (Josue)")
+                // Aquí llamamos a tu pantalla real en lugar del texto
+                OportunidadesScreen (
+                    onVerDetalle = { navController.navigate("detalle_prueba") }
+                )
             }
             composable(Ruta.Organizaciones.ruta) {
-                Text("Organizaciones y Contactos (Josue)")
+                OrganizacionesScreen(
+                    onNuevaOrganizacion = { navController.navigate("formulario_organizacion") }
+                )
             }
             composable(Ruta.PanelSupervisor.ruta) {
                 Text("Panel de Supervisor (Compañero)")
             }
+            composable("formulario_organizacion") {
+                FormularioOrganizacionScreen(onVolver = { navController.popBackStack() })
+            }
             composable("detalle_prueba") {
-                // Objeto alineado EXACTAMENTE a tu data class actual
                 val oportunidadPrueba = duoc.example.gestionoportunidades.data.Oportunidad(
                     id = 1,
                     nombreEvento = "Feria Empresarial Sur",
@@ -125,18 +131,6 @@ fun NavegacionPrincipal() {
                     onVolver = { navController.navigate(Ruta.Oportunidades.ruta) }
                 )
             }
-            composable("formulario_organizacion") {
-                FormularioOrganizacionScreen(onVolver = { navController.popBackStack() })
-            }
-            composable(Ruta.Organizaciones.ruta) {
-                OrganizacionesScreen(
-                    onNuevaOrganizacion = { navController.navigate("formulario_organizacion") }
-                )
-            }
-            composable("formulario_organizacion") {
-                FormularioOrganizacionScreen (onVolver = { navController.popBackStack() })
-            }
-
         }
     }
 }
