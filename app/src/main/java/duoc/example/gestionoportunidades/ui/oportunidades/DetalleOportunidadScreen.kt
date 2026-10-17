@@ -1,18 +1,33 @@
 package duoc.example.gestionoportunidades.ui.oportunidades
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import duoc.example.gestionoportunidades.data.Oportunidad
 import duoc.example.gestionoportunidades.ui.components.StatusChip
 import duoc.example.gestionoportunidades.ui.nativo.BotonAgregarCalendario
+import duoc.example.gestionoportunidades.ui.nativo.SeccionEvidencia
 
 @Composable
 fun DetalleOportunidadScreen(
@@ -36,7 +51,6 @@ fun DetalleOportunidadScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                // Ajustado al modelo de datos oficial ("nombre" en lugar de "nombreEvento")
                 text = oportunidad.nombre,
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.primary,
@@ -47,9 +61,8 @@ fun DetalleOportunidadScreen(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        // Datos del detalle requeridos en J2 ajustados al modelo oficial[cite: 3]
+        // Datos del detalle (organización y contacto vendrán de las claves foráneas en J2)
         DetalleItem(titulo = "Tipo de Evento", valor = oportunidad.tipoEvento)
-        // Nota: organizacion y contacto provienen de las claves foráneas, aquí los simulamos
         DetalleItem(titulo = "Comuna", valor = oportunidad.comuna)
         DetalleItem(titulo = "Público Esperado", valor = oportunidad.publicoEsperado.toString())
         DetalleItem(titulo = "Prioridad", valor = oportunidad.prioridad)
@@ -61,6 +74,7 @@ fun DetalleOportunidadScreen(
         DetalleItem(titulo = "Inicio", valor = oportunidad.fechaInicio)
         DetalleItem(titulo = "Término", valor = oportunidad.fechaTermino)
 
+        // Botón de calendario nativo (J6)
         BotonAgregarCalendario(
             titulo = "Evento: ${oportunidad.nombre}",
             descripcion = "Activación corporativa en ${oportunidad.comuna}. Tipo: ${oportunidad.tipoEvento}",
@@ -79,10 +93,11 @@ fun DetalleOportunidadScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Botón para simular el avance de estado
+        // Botón para simular el avance de estado (luego usará Permisos.kt)
         Button(
             onClick = {
-                estadoActual = if (estadoActual == "Identificada") "Contacto realizado" else "Propuesta enviada"
+                estadoActual =
+                    if (estadoActual == "Identificada") "Contacto realizado" else "Propuesta enviada"
             },
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -95,10 +110,11 @@ fun DetalleOportunidadScreen(
         ) {
             Text("Volver a la lista")
         }
+
         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
-        // Cámara nativa (Tarea J5)[cite: 3]
-        duoc.example.gestionoportunidades.ui.nativo.SeccionEvidencia()
+        // Cámara nativa (J5)
+        SeccionEvidencia()
 
         Spacer(modifier = Modifier.height(16.dp))
         Button(

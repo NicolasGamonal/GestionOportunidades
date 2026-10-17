@@ -1,10 +1,7 @@
 package duoc.example.gestionoportunidades.ui.auth
 
-// 1. IMPORTS (cambia ViewModel por AndroidViewModel, agrega Application y AppDatabase)
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import duoc.example.gestionoportunidades.data.local.AppDatabase
 import duoc.example.gestionoportunidades.data.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,14 +9,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-// 2. DECLARACIÓN DE LA CLASE (cambia ViewModel() por AndroidViewModel(application))
-class AuthViewModel(application: Application) : AndroidViewModel(application) {
+class AuthViewModel(
+    private val authRepository: AuthRepository
+) : ViewModel() {
 
-    // 3. AQUÍ VAN LA BD Y EL REPO (dentro de la clase, antes de los StateFlows)
-    private val db = AppDatabase.getDatabase(application)
-    private val authRepository = AuthRepository(db)
-
-    // 4. RESTO IGUAL A LO QUE YA TENÍAS
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
@@ -34,6 +27,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val usuario = authRepository.iniciarSesion(username, contrasena)
                 if (usuario != null) {
+                    SesionManager.iniciarSesion(usuario)
                     _uiState.update {
                         it.copy(
                             usuarioLogueado = usuario,
@@ -48,12 +42,15 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMensaje = "Error: ${e.localizedMessage}") }
+                _uiState.update {
+                    it.copy(isLoading = false, errorMensaje = "Error: ${e.localizedMessage}")
+                }
             }
         }
     }
 
     fun cerrarSesion() {
+        SesionManager.cerrarSesion()
         _uiState.value = AuthUiState()
     }
 }

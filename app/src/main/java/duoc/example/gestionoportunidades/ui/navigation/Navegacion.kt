@@ -12,67 +12,84 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.navigation.NavHostController
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import duoc.example.gestionoportunidades.ui.AppViewModelProvider
+import duoc.example.gestionoportunidades.ui.alertas.DashboardScreen
+import duoc.example.gestionoportunidades.ui.alertas.DashboardViewModel
+import duoc.example.gestionoportunidades.ui.auth.AuthViewModel
+import duoc.example.gestionoportunidades.ui.auth.LoginScreen
 import duoc.example.gestionoportunidades.ui.components.TopBar
 import duoc.example.gestionoportunidades.ui.oportunidades.DetalleOportunidadScreen
 import duoc.example.gestionoportunidades.ui.oportunidades.OportunidadesScreen
+import duoc.example.gestionoportunidades.ui.oportunidades.RegistroOportunidadScreen
 import duoc.example.gestionoportunidades.ui.organizaciones.FormularioOrganizacionScreen
 import duoc.example.gestionoportunidades.ui.organizaciones.OrganizacionesScreen
-import androidx.lifecycle.viewmodel.compose.viewModel
-import duoc.example.gestionoportunidades.ui.oportunidades.RegistroOportunidadScreen
-import duoc.example.gestionoportunidades.ui.seguimiento.SeguimientoViewModel
-import duoc.example.gestionoportunidades.ui.seguimiento.HistorialSeguimientoScreen
 import duoc.example.gestionoportunidades.ui.seguimiento.FormularioSeguimientoScreen
+import duoc.example.gestionoportunidades.ui.seguimiento.HistorialSeguimientoScreen
+import duoc.example.gestionoportunidades.ui.seguimiento.SeguimientoViewModel
+import duoc.example.gestionoportunidades.ui.supervisor.SupervisorScreen
+import duoc.example.gestionoportunidades.ui.supervisor.SupervisorViewModel
 import duoc.example.gestionoportunidades.ui.viewmodel.OportunidadViewModel
+
+// Pantallas que ya dibujan su propia barra superior: ocultamos la global para no duplicarla
+private val rutasConBarraPropia = setOf("historial_seguimiento", "formulario_seguimiento")
 
 @Composable
 fun NavegacionPrincipal() {
     val navController = rememberNavController()
-    // Obtenemos la ruta actual para saber qué título mostrar en el TopBar
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val rutaActual = navBackStackEntry?.destination?.route
 
-    // MOCK: Variable temporal para probar el menú según rol.
-    // Tu compañero conectará esto con Auth y Room en las sesiones de PC EXTRA.
-    val esSupervisor = true
+    // Sesión: el rol viene del usuario que inició sesión
+    val authViewModel: AuthViewModel = viewModel(factory = AppViewModelProvider.Factory)
+    val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    val esSupervisor = authState.usuarioLogueado?.rol == "SUPERVISOR"
 
-    // Lista de ítems para el menú inferior
+    // Ítems del menú inferior según el rol
     val itemsMenu = mutableListOf(
         Triple(Ruta.Dashboard, Icons.Filled.Dashboard, "Inicio"),
         Triple(Ruta.Oportunidades, Icons.Filled.Assessment, "Oportunidades"),
         Triple(Ruta.Organizaciones, Icons.Filled.Business, "Organizaciones")
     )
-
-    // Si es supervisor, agregamos su panel exclusivo al menú[cite: 1]
     if (esSupervisor) {
         itemsMenu.add(Triple(Ruta.PanelSupervisor, Icons.Filled.SupervisorAccount, "Equipo"))
     }
 
-    // No mostramos TopBar ni menú inferior en el Login
-    val mostrarBarras = rutaActual != Ruta.Login.ruta
+    val enLogin = rutaActual == Ruta.Login.ruta
+    val mostrarTopBar = !enLogin && rutaActual !in rutasConBarraPropia
+    val esPantallaDelMenu = itemsMenu.any { it.first.ruta == rutaActual }
+
+    // ViewModels compartidos entre pantallas (los de J2 a J4 se migrarán a la fábrica)
     val seguimientoViewModel: SeguimientoViewModel = viewModel()
     val oportunidadViewModel: OportunidadViewModel = viewModel()
 
     Scaffold(
         topBar = {
-            if (mostrarBarras) {
-                // Buscamos el título correspondiente a la ruta actual
+            if (mostrarTopBar) {
                 val titulo = itemsMenu.find { it.first.ruta == rutaActual }?.third ?: "Gestión"
                 TopBar(
                     titulo = titulo,
-                    mostrarBotonVolver = rutaActual != Ruta.Dashboard.ruta,
-                    onVolverClick = { navController.popBackStack() }
+                    mostrarBotonVolver = !esPantallaDelMenu,
+                    onVolverClick = { navController.popBackStack() },
+                    onCerrarSesion = {
+                        authViewModel.cerrarSesion()
+                        navController.navigate(Ruta.Login.ruta) {
+                            popUpTo(navController.graph.id) { inclusive = true }
+                        }
+                    }
                 )
             }
         },
         bottomBar = {
-            if (mostrarBarras) {
+            if (!enLogin) {
                 NavigationBar {
                     itemsMenu.forEach { (ruta, icono, etiqueta) ->
                         NavigationBarItem(
@@ -94,40 +111,68 @@ fun NavegacionPrincipal() {
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = Ruta.Dashboard.ruta,
+            startDestination = Ruta.Login.ruta,
             modifier = Modifier.padding(paddingValues)
         ) {
             composable(Ruta.Login.ruta) {
-                Text("Pantalla de Login (Compañero)")
+                LoginScreen(
+                    viewModel = authViewModel,
+                    onLoginExitoso = { _, _ ->
+                        navController.navigate(Ruta.Dashboard.ruta) {
+                            popUpTo(Ruta.Login.ruta) { inclusive = true }
+                        }
+                    }
+                )
             }
+
             composable(Ruta.Dashboard.ruta) {
-                Text("Dashboard (Compañero)")
+                val vm: DashboardViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                DashboardScreen(
+                    viewModel = vm,
+                    onVerOportunidad = { navController.navigate(Ruta.Oportunidades.ruta) } // provisional hasta J2
+                )
             }
+
             composable(Ruta.Oportunidades.ruta) {
-                // Aquí llamamos a tu pantalla real en lugar del texto
-                OportunidadesScreen (
+                OportunidadesScreen(
                     onVerDetalle = { navController.navigate("detalle_prueba") }
                 )
             }
+
             composable(Ruta.Organizaciones.ruta) {
                 OrganizacionesScreen(
                     onNuevaOrganizacion = { navController.navigate("formulario_organizacion") }
                 )
             }
+
             composable(Ruta.PanelSupervisor.ruta) {
-                Text("Panel de Supervisor (Compañero)")
+                if (esSupervisor) {
+                    val vm: SupervisorViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                    SupervisorScreen(
+                        viewModel = vm,
+                        onVerOportunidad = { navController.navigate(Ruta.Oportunidades.ruta) } // provisional hasta J2
+                    )
+                } else {
+                    // Bloqueo de ruta: un ejecutivo no puede ver el panel del supervisor
+                    LaunchedEffect(Unit) {
+                        navController.navigate(Ruta.Dashboard.ruta) {
+                            popUpTo(Ruta.PanelSupervisor.ruta) { inclusive = true }
+                        }
+                    }
+                }
             }
+
             composable("formulario_organizacion") {
                 FormularioOrganizacionScreen(onVolver = { navController.popBackStack() })
             }
+
             composable("detalle_prueba") {
-                // Objeto alineado EXACTAMENTE al nuevo modelo de datos
                 val oportunidadPrueba = duoc.example.gestionoportunidades.data.Oportunidad(
                     id = 1,
                     nombre = "Feria Empresarial Sur",
                     tipoEvento = "Feria",
                     fechaDeteccion = "2026-10-10",
-                    fechaInicio = "2026-10-20 09:00", // Importante para el calendario
+                    fechaInicio = "2026-10-20 09:00",
                     fechaTermino = "2026-10-20 18:00",
                     comuna = "Puente Alto",
                     publicoEsperado = 500,
@@ -139,12 +184,13 @@ fun NavegacionPrincipal() {
                     idResponsable = 1
                 )
 
-                DetalleOportunidadScreen (
+                DetalleOportunidadScreen(
                     oportunidad = oportunidadPrueba,
                     onVolver = { navController.navigate(Ruta.Oportunidades.ruta) },
                     onVerHistorial = { navController.navigate("historial_seguimiento") }
                 )
             }
+
             composable("historial_seguimiento") {
                 HistorialSeguimientoScreen(
                     viewModel = seguimientoViewModel,
@@ -159,12 +205,10 @@ fun NavegacionPrincipal() {
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
-            // ... otras pantallas ...
 
-            composable(route = "registro") {
+            composable("registro") {
                 RegistroOportunidadScreen(
                     viewModel = oportunidadViewModel,
-                    // NUEVO: Le decimos al navController que vuelva atrás
                     onVolver = { navController.popBackStack() }
                 )
             }

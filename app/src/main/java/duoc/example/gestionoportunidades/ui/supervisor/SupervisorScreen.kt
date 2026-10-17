@@ -30,10 +30,6 @@ fun SupervisorScreen(
     var mostrarDialogAsignar by remember { mutableStateOf(false) }
     var oportunidadSeleccionada by remember { mutableStateOf<Oportunidad?>(null) }
 
-    LaunchedEffect(Unit) {
-        viewModel.inicializarPanel()
-    }
-
     LaunchedEffect(busqueda) {
         viewModel.inicializarPanel(busqueda)
     }

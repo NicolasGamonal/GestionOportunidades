@@ -2,6 +2,7 @@ package duoc.example.gestionoportunidades.ui.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -16,14 +17,12 @@ import androidx.compose.runtime.Composable
 fun TopBar(
     titulo: String,
     mostrarBotonVolver: Boolean = false,
-    onVolverClick: () -> Unit = {}
+    onVolverClick: () -> Unit = {},
+    onCerrarSesion: (() -> Unit)? = null
 ) {
     TopAppBar(
         title = {
-            Text(
-                text = titulo,
-                style = MaterialTheme.typography.titleLarge
-            )
+            Text(text = titulo, style = MaterialTheme.typography.titleLarge)
         },
         navigationIcon = {
             if (mostrarBotonVolver) {
@@ -35,10 +34,21 @@ fun TopBar(
                 }
             }
         },
+        actions = {
+            if (onCerrarSesion != null) {
+                IconButton(onClick = onCerrarSesion) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = "Cerrar sesión"
+                    )
+                }
+            }
+        },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.primary,
             titleContentColor = MaterialTheme.colorScheme.onPrimary,
-            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+            actionIconContentColor = MaterialTheme.colorScheme.onPrimary
         )
     )
 }

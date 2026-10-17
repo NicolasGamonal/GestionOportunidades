@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import duoc.example.gestionoportunidades.data.repository.OportunidadRepository
 import duoc.example.gestionoportunidades.data.repository.AuthRepository
 import duoc.example.gestionoportunidades.model.Oportunidad
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,6 +18,8 @@ class SupervisorViewModel(
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SupervisorUiState())
+
+    private var jobPanel: Job? = null
     val uiState: StateFlow<SupervisorUiState> = _uiState.asStateFlow()
 
     /**
@@ -24,9 +27,8 @@ class SupervisorViewModel(
      */
     fun inicializarPanel(busqueda: String = "") {
         _uiState.update { it.copy(isLoading = true) }
-
-        viewModelScope.launch {
-            // Escucha cambios globales en las oportunidades (Flow)
+        jobPanel?.cancel()
+        jobPanel = viewModelScope.launch {
             oportunidadRepository.obtenerTodasLasOportunidades(busqueda).collect { lista ->
                 _uiState.update { it.copy(listaOportunidadesGlobal = lista, isLoading = false) }
             }

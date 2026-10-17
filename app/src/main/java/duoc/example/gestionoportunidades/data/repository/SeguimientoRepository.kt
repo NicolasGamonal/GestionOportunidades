@@ -1,4 +1,4 @@
-package duoc.example.gestionoportunidades.data
+package duoc.example.gestionoportunidades.data.repository
 
 import duoc.example.gestionoportunidades.data.local.AppDatabase
 import duoc.example.gestionoportunidades.model.Seguimiento

@@ -1,13 +1,33 @@
 package duoc.example.gestionoportunidades.ui.oportunidades
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -15,19 +35,16 @@ import duoc.example.gestionoportunidades.data.Oportunidad
 import duoc.example.gestionoportunidades.ui.components.PanelFiltrosAnimado
 import duoc.example.gestionoportunidades.ui.components.StatusChip
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OportunidadesScreen(
     onVerDetalle: () -> Unit = {}
 ) {
-    // Estados temporales para la UI (MOCK mientras llega el ViewModel de Room)
+    // Estados temporales para la UI (MOCK mientras llega el ViewModel de Room en J2)
     var searchQuery by remember { mutableStateOf("") }
     var mostrarFiltros by remember { mutableStateOf(false) }
 
-
-    // Datos de ejemplo según pide la planificación
     val oportunidadesMock = listOf(
-        duoc.example.gestionoportunidades.data.Oportunidad(
+        Oportunidad(
             id = 1,
             nombre = "Feria Tecnológica Sur",
             tipoEvento = "Feria",
@@ -42,7 +59,7 @@ fun OportunidadesScreen(
             observaciones = "Gran oportunidad de visibilidad.",
             idOrganizacion = 1
         ),
-        duoc.example.gestionoportunidades.data.Oportunidad(
+        Oportunidad(
             id = 2,
             nombre = "Jornada de Salud",
             tipoEvento = "Jornada",
@@ -52,7 +69,7 @@ fun OportunidadesScreen(
             comuna = "La Florida",
             publicoEsperado = 300,
             prioridad = "Media",
-            estado = "En Proceso",
+            estado = "Contacto realizado",
             costoReferencial = 100000,
             observaciones = "Se requiere confirmación de stand.",
             idOrganizacion = 2
@@ -83,16 +100,15 @@ fun OportunidadesScreen(
             }
         }
 
-        // Panel de filtros animado (Tarea J1 integrada aquí)
+        // Panel de filtros animado (animación de J1)
         PanelFiltrosAnimado(visible = mostrarFiltros)
 
-        // Estado vacío o Lista de Oportunidades
+        // Estado vacío o lista de oportunidades
         if (oportunidadesMock.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("No hay oportunidades registradas", style = MaterialTheme.typography.bodyLarge)
             }
         } else {
-            // Lista con LazyColumn y Card requerida por J2[cite: 1]
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -101,16 +117,6 @@ fun OportunidadesScreen(
                 items(oportunidadesMock) { oportunidad ->
                     OportunidadCard(oportunidad = oportunidad, onClick = onVerDetalle)
                 }
-            }
-        }
-        LazyColumn(
-            // ...
-        ) {
-            items(oportunidadesMock) { oportunidad ->
-                OportunidadCard(
-                    oportunidad = oportunidad,
-                    onClick = onVerDetalle // <-- 2. Conectamos el clic de la tarjeta
-                )
             }
         }
     }
@@ -134,18 +140,17 @@ fun OportunidadCard(oportunidad: Oportunidad, onClick: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = oportunidad.nombre, // Ajusta según tu entidad Oportunidad
+                    text = oportunidad.nombre,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f)
                 )
-                // Uso del Chip animado de la Tarea J1
-                StatusChip(estado = oportunidad.estado) // Ajusta según tu entidad
+                StatusChip(estado = oportunidad.estado)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Prioridad: ${oportunidad.prioridad}", // Ajusta según tu entidad
+                text = "Prioridad: ${oportunidad.prioridad}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
