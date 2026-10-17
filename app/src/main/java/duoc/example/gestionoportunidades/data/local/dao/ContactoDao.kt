@@ -1,10 +1,10 @@
 package duoc.example.gestionoportunidades.data.local.dao
 
-import androidx.room3.Dao
-import androidx.room3.Insert
-import androidx.room3.OnConflictStrategy
-import androidx.room3.Query
-import androidx.room3.Update
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
 import duoc.example.gestionoportunidades.model.Contacto
 import kotlinx.coroutines.flow.Flow
 
@@ -17,7 +17,7 @@ interface ContactoDao {
     @Update
     suspend fun actualizarContacto(contacto: Contacto)
 
-    @Query("SELECT * FROM contactos WHERE id = :id")
+    @Query("SELECT * FROM contactos WHERE idContacto = :id")
     suspend fun obtenerPorId(id: Long): Contacto?
 
     @Query("SELECT * FROM contactos WHERE idOrganizacion = :idOrg")

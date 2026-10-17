@@ -1,10 +1,10 @@
 package duoc.example.gestionoportunidades.data.local.dao
 
-import androidx.room3.Dao
-import androidx.room3.Insert
-import androidx.room3.OnConflictStrategy
-import androidx.room3.Query
-import androidx.room3.Update
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
 import duoc.example.gestionoportunidades.model.Oportunidad
 import kotlinx.coroutines.flow.Flow
 
@@ -17,7 +17,7 @@ interface OportunidadDao {
     @Update
     suspend fun actualizarOportunidad(oportunidad: Oportunidad)
 
-    @Query("SELECT * FROM oportunidades WHERE id = :id")
+    @Query("SELECT * FROM oportunidades WHERE idOportunidad = :id")
     suspend fun obtenerPorId(id: Long): Oportunidad?
 
     @Query("SELECT * FROM oportunidades")
@@ -35,6 +35,6 @@ interface OportunidadDao {
     @Query("SELECT * FROM oportunidades WHERE fechaInicio >= :fechaActual ORDER BY fechaInicio ASC")
     fun obtenerEventosProximos(fechaActual: Long): Flow<List<Oportunidad>>
 
-    @Query("UPDATE oportunidades SET estado = :estado WHERE id = :id")
+    @Query("UPDATE oportunidades SET estado = :estado WHERE idOportunidad = :id")
     suspend fun actualizarEstado(id: Long, estado: String)
 }

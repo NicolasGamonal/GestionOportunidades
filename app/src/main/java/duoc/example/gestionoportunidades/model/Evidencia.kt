@@ -1,4 +1,4 @@
-package com.agencia.oportunidades.model
+package duoc.example.gestionoportunidades.model
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -11,7 +11,7 @@ import duoc.example.gestionoportunidades.model.Oportunidad
     foreignKeys = [
         ForeignKey(
             entity = Oportunidad::class,
-            parentColumns = ["id"],
+            parentColumns = ["idOportunidad"],
             childColumns = ["idOportunidad"],
             onDelete = ForeignKey.CASCADE
         )
