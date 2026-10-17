@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import duoc.example.gestionoportunidades.data.Oportunidad
 import duoc.example.gestionoportunidades.ui.components.StatusChip
+import duoc.example.gestionoportunidades.ui.nativo.BotonAgregarCalendario
 
 @Composable
 fun DetalleOportunidadScreen(
@@ -60,8 +61,7 @@ fun DetalleOportunidadScreen(
         DetalleItem(titulo = "Inicio", valor = oportunidad.fechaInicio)
         DetalleItem(titulo = "Término", valor = oportunidad.fechaTermino)
 
-        // ---> BOTÓN DE CALENDARIO NATIVO (Tarea J6)[cite: 3] <---
-        duoc.example.gestionoportunidades.ui.nativo.BotonAgregarCalendario(
+        BotonAgregarCalendario(
             titulo = "Evento: ${oportunidad.nombre}",
             descripcion = "Activación corporativa en ${oportunidad.comuna}. Tipo: ${oportunidad.tipoEvento}",
             fechaString = oportunidad.fechaInicio,
