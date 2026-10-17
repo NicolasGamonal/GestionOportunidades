@@ -16,24 +16,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.TimeZone
+
+private const val UNA_HORA = 60 * 60 * 1000L
 
 @Composable
 fun BotonAgregarCalendario(
     titulo: String,
     descripcion: String,
-    fechaString: String, // Formato esperado: "yyyy-MM-dd" o "yyyy-MM-dd HH:mm"
+    inicioMillis: Long,
+    finMillis: Long,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
 
     Button(
-        onClick = { agregarEventoCalendario(context, titulo, descripcion, fechaString) },
+        onClick = { agregarEventoCalendario(context, titulo, descripcion, inicioMillis, finMillis) },
         modifier = modifier
     ) {
-        Icon(Icons.Default.Event, contentDescription = "Calendario")
+        Icon(Icons.Default.Event, contentDescription = null)
         Spacer(modifier = Modifier.width(8.dp))
         Text("Agregar al calendario")
     }
@@ -43,36 +43,23 @@ private fun agregarEventoCalendario(
     context: Context,
     titulo: String,
     descripcion: String,
-    fechaString: String
+    inicioMillis: Long,
+    finMillis: Long
 ) {
+    // Si el término no es posterior al inicio, el evento dura una hora
+    val fin = if (finMillis > inicioMillis) finMillis else inicioMillis + UNA_HORA
+
+    val intent = Intent(Intent.ACTION_INSERT).apply {
+        data = CalendarContract.Events.CONTENT_URI
+        putExtra(CalendarContract.Events.TITLE, titulo)
+        putExtra(CalendarContract.Events.DESCRIPTION, descripcion)
+        putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, inicioMillis)
+        putExtra(CalendarContract.EXTRA_EVENT_END_TIME, fin)
+    }
+
     try {
-        // Parsear la fecha manejando la zona horaria correcta
-        val formato = if (fechaString.contains(":")) {
-            SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-        } else {
-            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        }
-        formato.timeZone = TimeZone.getDefault()
-
-        val date = formato.parse(fechaString)
-        val timeInMillis = date?.time ?: System.currentTimeMillis()
-
-        // Crear el Intent ACTION_INSERT con CalendarContract[cite: 3]
-        val intent = Intent(Intent.ACTION_INSERT).apply {
-            data = CalendarContract.Events.CONTENT_URI
-            putExtra(CalendarContract.Events.TITLE, titulo)
-            putExtra(CalendarContract.Events.DESCRIPTION, descripcion)
-            putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, timeInMillis)
-            // Agregamos 1 hora por defecto para el fin del evento
-            putExtra(CalendarContract.EXTRA_EVENT_END_TIME, timeInMillis + (60 * 60 * 1000))
-        }
-
         context.startActivity(intent)
-
     } catch (e: ActivityNotFoundException) {
-        // Manejar que no haya app de calendario instalada[cite: 3]
         Toast.makeText(context, "No hay una aplicación de calendario instalada.", Toast.LENGTH_LONG).show()
-    } catch (e: Exception) {
-        Toast.makeText(context, "Error al procesar la fecha.", Toast.LENGTH_SHORT).show()
     }
 }

@@ -13,8 +13,13 @@ val Warning = Color(0xFFFFC107)
 val ErrorColor = Color(0xFFB3261E) // Evitamos llamarlo "Error" para no chocar con la clase base
 
 // Colores para estados de oportunidad
-val EstadoIdentificada = Color(0xFF9E9E9E)
-val EstadoContactoRealizado = Color(0xFF2196F3)
-val EstadoPropuestaEnviada = Color(0xFFFF9800)
-val EstadoConfirmada = Success
-val EstadoDescartada = ErrorColor
+val EstadoIdentificada = Color(0xFF546E7A)        // gris azulado
+val EstadoContactoRealizado = Color(0xFF1565C0)   // azul
+val EstadoPropuestaEnviada = Color(0xFFFFC107)    // ámbar (lleva texto oscuro)
+val EstadoEnEspera = Color(0xFF6A1B9A)            // morado
+val EstadoConfirmada = Color(0xFF2E7D32)          // verde
+val EstadoDescartada = ErrorColor                 // rojo
+
+// Colores de texto sobre los chips de estado
+val TextoSobreEstado = Color.White
+val TextoSobrePropuestaEnviada = Color(0xFF212121)

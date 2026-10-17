@@ -20,29 +20,16 @@ object Permisos {
      * El supervisor puede avanzar o pasar a estados finales (Confirmada / Descartada).
      */
     fun puedeCambiarEstado(rol: String, estadoActual: String, nuevoEstado: String): Boolean {
-        val orden = listOf(
-            "Identificada",
-            "Contacto realizado",
-            "Propuesta enviada",
-            "En espera de respuesta",
-            "Confirmada",
-            "Descartada"
-        )
+        // Los estados finales no se modifican, y "cambiar" al mismo estado no tiene sentido
+        if (estadoActual in Estados.finales || estadoActual == nuevoEstado) return false
 
-        val idxActual = orden.indexOf(estadoActual)
-        val idxNuevo = orden.indexOf(nuevoEstado)
-
+        val idxActual = Estados.todos.indexOf(estadoActual)
+        val idxNuevo = Estados.todos.indexOf(nuevoEstado)
         if (idxActual == -1 || idxNuevo == -1) return false
 
         return when (rol) {
-            "SUPERVISOR" -> {
-                // El supervisor puede avanzar un paso, o ir a Confirmada/Descartada desde cualquier estado no final
-                idxNuevo == idxActual + 1 || nuevoEstado in listOf("Confirmada", "Descartada")
-            }
-            "EJECUTIVO" -> {
-                // Solo un paso hacia adelante y NUNCA a estados finales
-                idxNuevo == idxActual + 1 && nuevoEstado !in listOf("Confirmada", "Descartada")
-            }
+            "SUPERVISOR" -> idxNuevo == idxActual + 1 || nuevoEstado in Estados.finales
+            "EJECUTIVO" -> idxNuevo == idxActual + 1 && nuevoEstado !in Estados.finales
             else -> false
         }
     }

@@ -3,6 +3,8 @@ package duoc.example.gestionoportunidades.ui.supervisor
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Person
@@ -52,51 +54,40 @@ fun SupervisorScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Barra de búsqueda
-            OutlinedTextField(
-                value = busqueda,
-                onValueChange = { busqueda = it },
-                label = { Text("Buscar oportunidad...") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-
-            if (uiState.isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+            item {
+                OutlinedTextField(
+                    value = busqueda,
+                    onValueChange = { busqueda = it },
+                    label = { Text("Buscar oportunidad...") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            when {
+                uiState.isLoading -> item {
+                    Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 }
-            } else if (uiState.listaOportunidadesGlobal.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                uiState.listaOportunidadesGlobal.isEmpty() -> item {
                     Text("No hay oportunidades", style = MaterialTheme.typography.bodyLarge)
                 }
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(uiState.listaOportunidadesGlobal) { oportunidad ->
-                        SupervisorCard(
-                            oportunidad = oportunidad,
-                            ejecutivos = uiState.ejecutivos,
-                            onVerDetalle = { onVerOportunidad(oportunidad.idOportunidad) },
-                            onAsignar = {
-                                oportunidadSeleccionada = oportunidad
-                                mostrarDialogAsignar = true
-                            },
-                            onConfirmar = { viewModel.confirmarOportunidad(oportunidad) },
-                            onDescartar = { viewModel.descartarOportunidad(oportunidad) }
-                        )
-                    }
+                else -> items(uiState.listaOportunidadesGlobal, key = { it.idOportunidad }) { oportunidad ->
+                    SupervisorCard(
+                        oportunidad = oportunidad,
+                        ejecutivos = uiState.ejecutivos,
+                        onVerDetalle = { onVerOportunidad(oportunidad.idOportunidad) },
+                        onAsignar = {
+                            oportunidadSeleccionada = oportunidad
+                            mostrarDialogAsignar = true
+                        },
+                        onConfirmar = { viewModel.confirmarOportunidad(oportunidad) },
+                        onDescartar = { viewModel.descartarOportunidad(oportunidad) }
+                    )
                 }
             }
         }
@@ -111,7 +102,10 @@ fun SupervisorScreen(
                 tonalElevation = 4.dp
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp).width(300.dp)
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .width(300.dp)
+                        .verticalScroll(rememberScrollState())
                 ) {
                     Text("Asignar responsable", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(16.dp))

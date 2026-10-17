@@ -37,4 +37,17 @@ interface OportunidadDao {
 
     @Query("UPDATE oportunidades SET estado = :estado WHERE idOportunidad = :id")
     suspend fun actualizarEstado(id: Long, estado: String)
+
+    @Query("SELECT * FROM oportunidades WHERE idOportunidad = :id")
+    fun observarPorId(id: Long): Flow<Oportunidad?>
+
+    @Query("""
+    SELECT * FROM oportunidades
+    WHERE (:estado = '' OR estado = :estado)
+      AND (:prioridad = '' OR prioridad = :prioridad)
+      AND nombre LIKE '%' || :busqueda || '%'
+      AND (:idResponsable = 0 OR idResponsable = :idResponsable)
+    ORDER BY fechaInicio ASC
+""")
+    fun buscar(estado: String, prioridad: String, busqueda: String, idResponsable: Long): Flow<List<Oportunidad>>
 }

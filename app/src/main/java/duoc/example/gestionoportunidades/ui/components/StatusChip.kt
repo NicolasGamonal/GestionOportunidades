@@ -12,38 +12,43 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import duoc.example.gestionoportunidades.ui.theme.*
 
 @Composable
 fun StatusChip(estado: String) {
-    // 1. Determinamos el color basado en el estado (sin usar hexadecimales directos aquí)
-    val targetColor = when (estado) {
-        "Identificada" -> EstadoIdentificada
-        "Contacto realizado" -> EstadoContactoRealizado
-        "Propuesta enviada" -> EstadoPropuestaEnviada
-        "Confirmada" -> EstadoConfirmada
-        "Descartada" -> EstadoDescartada
-        else -> MaterialTheme.colorScheme.surfaceVariant
+    // Par (fondo, texto) por estado; los valores salen de ui/theme/Color.kt
+    val (fondo, texto) = when (estado) {
+        "Identificada" -> EstadoIdentificada to TextoSobreEstado
+        "Contacto realizado" -> EstadoContactoRealizado to TextoSobreEstado
+        "Propuesta enviada" -> EstadoPropuestaEnviada to TextoSobrePropuestaEnviada
+        "En espera de respuesta" -> EstadoEnEspera to TextoSobreEstado
+        "Confirmada" -> EstadoConfirmada to TextoSobreEstado
+        "Descartada" -> EstadoDescartada to TextoSobreEstado
+        else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    // 2. Animación de color solicitada en J1
-    val animatedColor by animateColorAsState(
-        targetValue = targetColor,
+    // Animación de color (J1): se anima el fondo y el texto
+    val fondoAnimado by animateColorAsState(
+        targetValue = fondo,
         animationSpec = tween(durationMillis = 500),
-        label = "ColorAnimation"
+        label = "ColorFondoEstado"
+    )
+    val textoAnimado by animateColorAsState(
+        targetValue = texto,
+        animationSpec = tween(durationMillis = 500),
+        label = "ColorTextoEstado"
     )
 
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(animatedColor)
+            .background(fondoAnimado)
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text(
             text = estado,
-            color = Color.White,
+            color = textoAnimado,
             style = MaterialTheme.typography.labelMedium
         )
     }

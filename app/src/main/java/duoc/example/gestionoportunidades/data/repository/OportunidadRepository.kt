@@ -1,5 +1,6 @@
 package duoc.example.gestionoportunidades.data.repository
 
+import androidx.room.withTransaction
 import duoc.example.gestionoportunidades.data.local.AppDatabase
 import duoc.example.gestionoportunidades.model.Contacto
 import duoc.example.gestionoportunidades.model.Oportunidad
@@ -70,5 +71,33 @@ class OportunidadRepository(private val db: AppDatabase) {
 
     fun obtenerContactosPorOrganizacion(idOrg: Long): Flow<List<Contacto>> {
         return contactoDao.obtenerContactosPorOrganizacion(idOrg)
+    }
+
+    fun buscar(estado: String, prioridad: String, busqueda: String, idResponsable: Long): Flow<List<Oportunidad>> =
+        oportunidadDao.buscar(estado, prioridad, busqueda, idResponsable)
+
+    fun observarPorId(id: Long): Flow<Oportunidad?> = oportunidadDao.observarPorId(id)
+
+    suspend fun cambiarEstado(
+        idOportunidad: Long,
+        estadoAnterior: String,
+        nuevoEstado: String,
+        idUsuario: Long
+    ) {
+        val ahora = System.currentTimeMillis()
+        db.withTransaction {
+            oportunidadDao.actualizarEstado(idOportunidad, nuevoEstado)
+            seguimientoDao.insertarSeguimiento(
+                Seguimiento(
+                    idOportunidad = idOportunidad,
+                    idUsuario = idUsuario,
+                    tipoAccion = "Cambio de estado",
+                    fechaHora = ahora,
+                    resultado = "$estadoAnterior → $nuevoEstado",
+                    proximaAccion = "",
+                    fechaProximo = ahora
+                )
+            )
+        }
     }
 }

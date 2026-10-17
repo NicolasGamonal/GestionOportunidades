@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import duoc.example.gestionoportunidades.ui.auth.SesionManager
+import duoc.example.gestionoportunidades.util.Permisos
 
 class SupervisorViewModel(
     private val oportunidadRepository: OportunidadRepository,
@@ -21,6 +23,13 @@ class SupervisorViewModel(
 
     private var jobPanel: Job? = null
     val uiState: StateFlow<SupervisorUiState> = _uiState.asStateFlow()
+    init {
+        viewModelScope.launch {
+            authRepository.obtenerEjecutivos().collect { lista ->
+                _uiState.update { it.copy(ejecutivos = lista) }
+            }
+        }
+    }
 
     /**
      * Carga de forma reactiva todas las oportunidades y los ejecutivos de prueba disponibles.
@@ -40,6 +49,10 @@ class SupervisorViewModel(
      * Actualiza el idResponsable en la oportunidad y persiste el cambio en Room.
      */
     fun reasignarResponsable(oportunidad: Oportunidad, idNuevoEjecutivo: Long) {
+        if (!Permisos.puedeAsignar(SesionManager.getRol())) {
+            _uiState.update { it.copy(mensajeError = "Solo el supervisor puede asignar responsables") }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, mensajeExito = null, mensajeError = null) }
             try {
@@ -67,25 +80,27 @@ class SupervisorViewModel(
     fun limpiarMensajes() {
         _uiState.update { it.copy(mensajeExito = null, mensajeError = null) }
     }
-    fun confirmarOportunidad(oportunidad: Oportunidad) {
-        viewModelScope.launch {
-            try {
-                oportunidadRepository.actualizarEstado(oportunidad.idOportunidad, "Confirmada")
-                _uiState.update { it.copy(mensajeExito = "Oportunidad confirmada") }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(mensajeError = "Error: ${e.localizedMessage}") }
-            }
-        }
-    }
+    fun confirmarOportunidad(oportunidad: Oportunidad) =
+        cambiarAEstadoFinal(oportunidad, "Confirmada", "Oportunidad confirmada")
 
-    fun descartarOportunidad(oportunidad: Oportunidad) {
+    fun descartarOportunidad(oportunidad: Oportunidad) =
+        cambiarAEstadoFinal(oportunidad, "Descartada", "Oportunidad descartada")
+    private fun cambiarAEstadoFinal(oportunidad: Oportunidad, estado: String, mensaje: String) {
+        val usuario = SesionManager.usuarioActual
+        if (usuario == null || !Permisos.puedeCambiarEstado(usuario.rol, oportunidad.estado, estado)) {
+            _uiState.update { it.copy(mensajeError = "No tienes permiso para esta acción") }
+            return
+        }
         viewModelScope.launch {
             try {
-                oportunidadRepository.actualizarEstado(oportunidad.idOportunidad, "Descartada")
-                _uiState.update { it.copy(mensajeExito = "Oportunidad descartada") }
+                oportunidadRepository.cambiarEstado(
+                    oportunidad.idOportunidad, oportunidad.estado, estado, usuario.idUsuario
+                )
+                _uiState.update { it.copy(mensajeExito = mensaje) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(mensajeError = "Error: ${e.localizedMessage}") }
             }
+
         }
     }
 }

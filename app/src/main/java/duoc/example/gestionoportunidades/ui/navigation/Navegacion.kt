@@ -17,10 +17,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import duoc.example.gestionoportunidades.ui.AppViewModelProvider
 import duoc.example.gestionoportunidades.ui.alertas.DashboardScreen
 import duoc.example.gestionoportunidades.ui.alertas.DashboardViewModel
@@ -28,7 +31,9 @@ import duoc.example.gestionoportunidades.ui.auth.AuthViewModel
 import duoc.example.gestionoportunidades.ui.auth.LoginScreen
 import duoc.example.gestionoportunidades.ui.components.TopBar
 import duoc.example.gestionoportunidades.ui.oportunidades.DetalleOportunidadScreen
+import duoc.example.gestionoportunidades.ui.oportunidades.DetalleOportunidadViewModel
 import duoc.example.gestionoportunidades.ui.oportunidades.OportunidadesScreen
+import duoc.example.gestionoportunidades.ui.oportunidades.OportunidadesViewModel
 import duoc.example.gestionoportunidades.ui.oportunidades.RegistroOportunidadScreen
 import duoc.example.gestionoportunidades.ui.organizaciones.FormularioOrganizacionScreen
 import duoc.example.gestionoportunidades.ui.organizaciones.OrganizacionesScreen
@@ -74,7 +79,8 @@ fun NavegacionPrincipal() {
     Scaffold(
         topBar = {
             if (mostrarTopBar) {
-                val titulo = itemsMenu.find { it.first.ruta == rutaActual }?.third ?: "Gestión"
+                val titulo = itemsMenu.find { it.first.ruta == rutaActual }?.third
+                    ?: if (rutaActual == Ruta.DetalleOportunidad.ruta) "Detalle" else "Gestión"
                 TopBar(
                     titulo = titulo,
                     mostrarBotonVolver = !esPantallaDelMenu,
@@ -97,11 +103,7 @@ fun NavegacionPrincipal() {
                             label = { Text(etiqueta) },
                             selected = rutaActual == ruta.ruta,
                             onClick = {
-                                navController.navigate(ruta.ruta) {
-                                    popUpTo(Ruta.Dashboard.ruta) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
+                                navController.irAPestana(ruta.ruta)
                             }
                         )
                     }
@@ -129,13 +131,7 @@ fun NavegacionPrincipal() {
                 val vm: DashboardViewModel = viewModel(factory = AppViewModelProvider.Factory)
                 DashboardScreen(
                     viewModel = vm,
-                    onVerOportunidad = { navController.navigate(Ruta.Oportunidades.ruta) } // provisional hasta J2
-                )
-            }
-
-            composable(Ruta.Oportunidades.ruta) {
-                OportunidadesScreen(
-                    onVerDetalle = { navController.navigate("detalle_prueba") }
+                    onVerOportunidad = { id -> navController.navigate(Ruta.DetalleOportunidad.crear(id)) }
                 )
             }
 
@@ -150,7 +146,7 @@ fun NavegacionPrincipal() {
                     val vm: SupervisorViewModel = viewModel(factory = AppViewModelProvider.Factory)
                     SupervisorScreen(
                         viewModel = vm,
-                        onVerOportunidad = { navController.navigate(Ruta.Oportunidades.ruta) } // provisional hasta J2
+                        onVerOportunidad = { id -> navController.navigate(Ruta.DetalleOportunidad.crear(id)) }
                     )
                 } else {
                     // Bloqueo de ruta: un ejecutivo no puede ver el panel del supervisor
@@ -164,31 +160,6 @@ fun NavegacionPrincipal() {
 
             composable("formulario_organizacion") {
                 FormularioOrganizacionScreen(onVolver = { navController.popBackStack() })
-            }
-
-            composable("detalle_prueba") {
-                val oportunidadPrueba = duoc.example.gestionoportunidades.data.Oportunidad(
-                    id = 1,
-                    nombre = "Feria Empresarial Sur",
-                    tipoEvento = "Feria",
-                    fechaDeteccion = "2026-10-10",
-                    fechaInicio = "2026-10-20 09:00",
-                    fechaTermino = "2026-10-20 18:00",
-                    comuna = "Puente Alto",
-                    publicoEsperado = 500,
-                    prioridad = "Alta",
-                    estado = "Identificada",
-                    costoReferencial = 150000,
-                    observaciones = "Requiere confirmación de espacio físico para la activación.",
-                    idOrganizacion = 1,
-                    idResponsable = 1
-                )
-
-                DetalleOportunidadScreen(
-                    oportunidad = oportunidadPrueba,
-                    onVolver = { navController.navigate(Ruta.Oportunidades.ruta) },
-                    onVerHistorial = { navController.navigate("historial_seguimiento") }
-                )
             }
 
             composable("historial_seguimiento") {
@@ -212,6 +183,32 @@ fun NavegacionPrincipal() {
                     onVolver = { navController.popBackStack() }
                 )
             }
+            composable(Ruta.Oportunidades.ruta) {
+                val vm: OportunidadesViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                OportunidadesScreen(
+                    viewModel = vm,
+                    onVerDetalle = { id -> navController.navigate(Ruta.DetalleOportunidad.crear(id)) }
+                )
+            }
+
+            composable(
+                route = Ruta.DetalleOportunidad.ruta,
+                arguments = listOf(navArgument("id") { type = NavType.LongType })
+            ) {
+                val vm: DetalleOportunidadViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                DetalleOportunidadScreen(
+                    viewModel = vm,
+                    onVolver = { navController.popBackStack() },
+                    onVerHistorial = { navController.navigate("historial_seguimiento") }
+                )
+            }
         }
+
+    }
+}
+private fun NavController.irAPestana(ruta: String) {
+    navigate(ruta) {
+        popUpTo(Ruta.Dashboard.ruta)
+        launchSingleTop = true
     }
 }

@@ -8,6 +8,9 @@ import duoc.example.gestionoportunidades.GestionApp
 import duoc.example.gestionoportunidades.ui.alertas.DashboardViewModel
 import duoc.example.gestionoportunidades.ui.auth.AuthViewModel
 import duoc.example.gestionoportunidades.ui.supervisor.SupervisorViewModel
+import androidx.lifecycle.createSavedStateHandle
+import duoc.example.gestionoportunidades.ui.oportunidades.DetalleOportunidadViewModel
+import duoc.example.gestionoportunidades.ui.oportunidades.OportunidadesViewModel
 
 object AppViewModelProvider {
     val Factory = viewModelFactory {
@@ -19,7 +22,15 @@ object AppViewModelProvider {
                 app().container.authRepository
             )
         }
-        // aquí agregarás los tuyos (Oportunidades, OrgContactos, Seguimiento) en J2 a J4
+        initializer { OportunidadesViewModel(app().container.oportunidadRepository) }
+        initializer {
+            DetalleOportunidadViewModel(
+                createSavedStateHandle(),
+                app().container.oportunidadRepository,
+                app().container.organizacionRepository,
+                app().container.authRepository
+            )
+        }
     }
 }
 
