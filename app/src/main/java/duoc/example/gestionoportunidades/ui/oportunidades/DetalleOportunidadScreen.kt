@@ -3,6 +3,8 @@ package duoc.example.gestionoportunidades.ui.oportunidades
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,7 +24,8 @@ import duoc.example.gestionoportunidades.util.Estados
 fun DetalleOportunidadScreen(
     viewModel: DetalleOportunidadViewModel,
     onVolver: () -> Unit,
-    onVerHistorial: () -> Unit
+    onVerHistorial: () -> Unit,
+    onEditar: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -50,7 +53,8 @@ fun DetalleOportunidadScreen(
                 estadosPermitidos = uiState.estadosPermitidos,
                 onCambiarEstado = viewModel::cambiarEstado,
                 onVolver = onVolver,
-                onVerHistorial = onVerHistorial
+                onVerHistorial = onVerHistorial,
+                onEditar = { onEditar(oportunidad.idOportunidad) }
             )
         }
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
@@ -77,7 +81,8 @@ private fun DetalleContenido(
     estadosPermitidos: List<String>,
     onCambiarEstado: (String) -> Unit,
     onVolver: () -> Unit,
-    onVerHistorial: () -> Unit
+    onVerHistorial: () -> Unit,
+    onEditar: (Long) -> Unit
 ) {
     Column(
         modifier = Modifier

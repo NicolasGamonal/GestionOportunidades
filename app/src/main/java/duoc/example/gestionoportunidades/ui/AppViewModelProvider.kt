@@ -10,6 +10,7 @@ import duoc.example.gestionoportunidades.ui.auth.AuthViewModel
 import duoc.example.gestionoportunidades.ui.supervisor.SupervisorViewModel
 import androidx.lifecycle.createSavedStateHandle
 import duoc.example.gestionoportunidades.ui.oportunidades.DetalleOportunidadViewModel
+import duoc.example.gestionoportunidades.ui.oportunidades.FormularioOportunidadViewModel
 import duoc.example.gestionoportunidades.ui.oportunidades.OportunidadesViewModel
 
 object AppViewModelProvider {
@@ -29,6 +30,13 @@ object AppViewModelProvider {
                 app().container.oportunidadRepository,
                 app().container.organizacionRepository,
                 app().container.authRepository
+            )
+        }
+        initializer {
+            FormularioOportunidadViewModel(
+                createSavedStateHandle(),
+                app().container.oportunidadRepository,
+                app().container.organizacionRepository
             )
         }
     }

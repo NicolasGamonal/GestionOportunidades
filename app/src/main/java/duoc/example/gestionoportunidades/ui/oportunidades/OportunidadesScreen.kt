@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -18,19 +19,18 @@ import duoc.example.gestionoportunidades.ui.components.StatusChip
 import duoc.example.gestionoportunidades.util.comoFechaHora
 
 @Composable
-fun OportunidadesScreen(
-    viewModel: OportunidadesViewModel,
-    onVerDetalle: (Long) -> Unit
-) {
+fun OportunidadesScreen(viewModel: OportunidadesViewModel, onVerDetalle: (Long) -> Unit, onNueva: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val filtros by viewModel.filtros.collectAsStateWithLifecycle()
     var mostrarFiltros by remember { mutableStateOf(false) }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            // bottom = 88.dp deja espacio para que el botón no tape la última tarjeta
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -79,8 +79,16 @@ fun OportunidadesScreen(
                     oportunidad = oportunidad,
                     onClick = { onVerDetalle(oportunidad.idOportunidad) }
                 )
+                }
             }
+
         }
+        ExtendedFloatingActionButton(
+            onClick = onNueva,
+            icon = { Icon(Icons.Default.Add, contentDescription = null) },
+            text = { Text("Nueva") },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+        )
     }
 }
 
