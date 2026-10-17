@@ -49,7 +49,7 @@ fun LoginScreen(
             value = username,
             onValueChange = {
                 username = it
-                errorUsername = Validaciones.validarCampoObligatorio(it)
+                errorUsername = Validaciones.validarObligatorio(it, "El usuario")
             },
             label = { Text("Usuario ficticio (ejecutivo1 / supervisor1)") },
             isError = errorUsername != null,
@@ -65,7 +65,8 @@ fun LoginScreen(
             value = contrasena,
             onValueChange = {
                 contrasena = it
-                errorContrasena = Validaciones.validarCampoObligatorio(it)
+
+                errorContrasena = Validaciones.validarObligatorio(it, "La contraseña")
             },
             label = { Text("Contraseña local") },
             visualTransformation = PasswordVisualTransformation(),
@@ -93,8 +94,8 @@ fun LoginScreen(
 
         Button(
             onClick = {
-                errorUsername = Validaciones.validarCampoObligatorio(username)
-                errorContrasena = Validaciones.validarCampoObligatorio(contrasena)
+                errorUsername = Validaciones.validarObligatorio(username, "El usuario")
+                errorContrasena = Validaciones.validarObligatorio(contrasena, "La contraseña")
 
                 if (errorUsername == null && errorContrasena == null) {
                     viewModel.intentarLogin(username, contrasena)

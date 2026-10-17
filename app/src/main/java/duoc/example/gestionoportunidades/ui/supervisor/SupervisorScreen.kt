@@ -1,6 +1,5 @@
 package duoc.example.gestionoportunidades.ui.supervisor
 
-import android.app.Dialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
