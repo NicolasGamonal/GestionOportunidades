@@ -28,4 +28,10 @@ sealed class Ruta(val ruta: String, val titulo: String) {
         fun crear(idOrganizacion: Long) = "formulario_contacto/$idOrganizacion"
         fun editar(idOrganizacion: Long, id: Long) = "formulario_contacto/$idOrganizacion?id=$id"
     }
+    object HistorialSeguimiento : Ruta("seguimiento/{idOportunidad}", "Historial de gestión") {
+        fun crear(idOportunidad: Long) = "seguimiento/$idOportunidad"
+    }
+    object FormularioSeguimiento : Ruta("formulario_seguimiento/{idOportunidad}", "Nueva gestión") {
+        fun crear(idOportunidad: Long) = "formulario_seguimiento/$idOportunidad"
+    }
 }

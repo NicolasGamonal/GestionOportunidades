@@ -1,143 +1,87 @@
 package duoc.example.gestionoportunidades.ui.seguimiento
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
-import duoc.example.gestionoportunidades.data.Seguimiento
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import duoc.example.gestionoportunidades.ui.components.*
+import duoc.example.gestionoportunidades.util.Catalogos
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FormularioSeguimientoScreen(
-    viewModel: SeguimientoViewModel,
-    onNavigateBack: () -> Unit
+    viewModel: FormularioSeguimientoViewModel,
+    onGuardado: () -> Unit,
+    onCancelar: () -> Unit
 ) {
-    // Para mostrar los mensajes flotantes (Snackbar)
-    val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
+    val ui by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Estado del formulario: se usa rememberSaveable para conservar datos si hay error
-    var tipoAccion by rememberSaveable { mutableStateOf("") }
-    var resultado by rememberSaveable { mutableStateOf("") }
-    var proximaAccion by rememberSaveable { mutableStateOf("") }
-    var fechaProximo by rememberSaveable { mutableStateOf("") }
-
-    // Estado de errores individuales[cite: 4]
-    var errorTipo by rememberSaveable { mutableStateOf<String?>(null) }
-    var errorResultado by rememberSaveable { mutableStateOf<String?>(null) }
-
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text("Nueva Gestión") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Volver")
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Campo: Tipo de Acción
-            OutlinedTextField(
-                value = tipoAccion,
-                onValueChange = {
-                    tipoAccion = it
-                    errorTipo = null // Limpia el error al escribir
-                },
-                label = { Text("Tipo de Acción (Ej: Llamada)") },
-                modifier = Modifier.fillMaxWidth(),
-                isError = errorTipo != null,
-                supportingText = { if (errorTipo != null) Text(errorTipo!!) },
-                trailingIcon = { if (errorTipo != null) Icon(Icons.Default.Error, "Error") }
-            )
-
-            // Campo: Resultado
-            OutlinedTextField(
-                value = resultado,
-                onValueChange = {
-                    resultado = it
-                    errorResultado = null
-                },
-                label = { Text("Resultado de la gestión") },
-                modifier = Modifier.fillMaxWidth(),
-                isError = errorResultado != null,
-                supportingText = { if (errorResultado != null) Text(errorResultado!!) },
-                trailingIcon = { if (errorResultado != null) Icon(Icons.Default.Error, "Error") }
-            )
-
-            // Campo: Próxima Acción (Opcional en este paso)
-            OutlinedTextField(
-                value = proximaAccion,
-                onValueChange = { proximaAccion = it },
-                label = { Text("Próxima Acción (Ej: Enviar correo)") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            // Campo: Fecha Próximo Seguimiento
-            OutlinedTextField(
-                value = fechaProximo,
-                onValueChange = { fechaProximo = it },
-                label = { Text("Fecha (Ej: 2026-10-20)") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Botón Guardar
-            Button(
-                onClick = {
-                    var esValido = true
-                    // Validaciones básicas que activan los isError y supportingText[cite: 4]
-                    if (tipoAccion.isBlank()) {
-                        errorTipo = "El tipo de acción es obligatorio"
-                        esValido = false
-                    }
-                    if (resultado.isBlank()) {
-                        errorResultado = "El resultado es obligatorio"
-                        esValido = false
-                    }
-
-                    if (esValido) {
-                        val nuevoSeguimiento = Seguimiento(
-                            tipoAccion = tipoAccion,
-                            fechaHora = "2026-10-16",
-                            resultado = resultado,
-                            proximaAccion = proximaAccion,
-                            fechaProximo = fechaProximo,
-                            idOportunidad = 1,
-                            idUsuario = 1
-                        )
-
-                        viewModel.guardarSeguimiento(nuevoSeguimiento)
-
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Gestión guardada con éxito") // Snackbar de éxito[cite: 4]
-                            onNavigateBack()
-                        }
-                    } else {
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Por favor, corrige los errores") // Snackbar de error[cite: 4]
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
+    FormularioContenedor(
+        guardadoExitoso = ui.guardadoExitoso,
+        mensajeExito = "Gestión registrada",
+        mensajeError = ui.mensajeError,
+        onErrorMostrado = viewModel::limpiarMensajeError,
+        onGuardado = onGuardado
+    ) {
+        when {
+            ui.cargando -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+            ui.sinAcceso -> PantallaMensaje("No tienes permiso para registrar gestiones aquí", onCancelar)
+            else -> Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text("Guardar Gestión")
+                Text(
+                    text = "Oportunidad: ${ui.nombreOportunidad}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                CampoDesplegable(
+                    valor = ui.tipoAccion,
+                    etiqueta = "Tipo de acción",
+                    opciones = Catalogos.tiposAccion,
+                    textoDe = { it },
+                    error = ui.errores[CampoSeguimiento.TIPO],
+                    onSeleccion = viewModel::onTipoChange
+                )
+                CampoFormulario(
+                    valor = ui.resultado,
+                    onValorChange = viewModel::onResultadoChange,
+                    etiqueta = "Resultado de la gestión",
+                    error = ui.errores[CampoSeguimiento.RESULTADO],
+                    singleLine = false,
+                    minLines = 3
+                )
+                CampoFormulario(
+                    valor = ui.proximaAccion,
+                    onValorChange = viewModel::onProximaAccionChange,
+                    etiqueta = "Próxima acción (ej: enviar propuesta)",
+                    error = ui.errores[CampoSeguimiento.PROXIMA_ACCION]
+                )
+                CampoFecha(
+                    valor = ui.fechaProximo,
+                    etiqueta = "Fecha del próximo seguimiento",
+                    error = ui.errores[CampoSeguimiento.FECHA_PROXIMA],
+                    onFechaElegida = viewModel::onFechaProximaChange
+                )
+                Spacer(Modifier.height(8.dp))
+                BotonesFormulario(
+                    guardando = ui.guardando,
+                    guardadoExitoso = ui.guardadoExitoso,
+                    textoGuardar = "Guardar gestión",
+                    onGuardar = viewModel::guardar,
+                    onCancelar = onCancelar
+                )
             }
         }
     }

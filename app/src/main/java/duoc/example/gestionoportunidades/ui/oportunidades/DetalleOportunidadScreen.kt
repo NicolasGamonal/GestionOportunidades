@@ -25,7 +25,7 @@ import duoc.example.gestionoportunidades.util.comoPesos
 fun DetalleOportunidadScreen(
     viewModel: DetalleOportunidadViewModel,
     onVolver: () -> Unit,
-    onVerHistorial: () -> Unit,
+    onVerHistorial: (Long) -> Unit,
     onEditar: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -55,7 +55,7 @@ fun DetalleOportunidadScreen(
                 onCambiarEstado = viewModel::cambiarEstado,
                 onEditar = { onEditar(oportunidad.idOportunidad) },
                 onVolver = onVolver,
-                onVerHistorial = onVerHistorial
+                onVerHistorial = { onVerHistorial(oportunidad.idOportunidad) }
             )
         }
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))

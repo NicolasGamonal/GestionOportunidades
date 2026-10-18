@@ -5,7 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -13,109 +13,126 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import duoc.example.gestionoportunidades.data.Seguimiento
+import duoc.example.gestionoportunidades.ui.components.PantallaMensaje
+import duoc.example.gestionoportunidades.ui.nativo.BotonAgregarCalendario
+import duoc.example.gestionoportunidades.util.Catalogos
+import duoc.example.gestionoportunidades.util.aInicioDeJornada
+import duoc.example.gestionoportunidades.util.comoFechaCorta
+import duoc.example.gestionoportunidades.util.comoFechaHora
 
-@OptIn(ExperimentalMaterial3Api::class)
+private const val UNA_HORA = 60 * 60 * 1000L
+
 @Composable
 fun HistorialSeguimientoScreen(
-    viewModel: SeguimientoViewModel,
-    onNavigateToNuevoSeguimiento: () -> Unit,
-    onNavigateBack: () -> Unit
+    viewModel: HistorialSeguimientoViewModel,
+    onVolver: () -> Unit,
+    onNuevaGestion: (Long) -> Unit
 ) {
-    // Recolectamos el estado respetando el ciclo de vida, como pide el checklist[cite: 4]
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val ui by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Historial de la Oportunidad") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Volver")
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onNavigateToNuevoSeguimiento) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Nueva Gestión")
-            }
+    when {
+        ui.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
         }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when {
-                // Indicador de carga[cite: 4]
-                uiState.estaCargando -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                // Estado vacío[cite: 4]
-                uiState.seguimientos.isEmpty() -> {
+        ui.sinAcceso -> PantallaMensaje("No tienes permiso para ver esta oportunidad", onVolver)
+        ui.noEncontrada -> PantallaMensaje("No se encontró la oportunidad", onVolver)
+        else -> Box(Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
                     Text(
-                        text = "Aún no hay gestiones registradas.",
-                        modifier = Modifier.align(Alignment.Center),
-                        style = MaterialTheme.typography.bodyLarge
+                        text = ui.nombreOportunidad,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
-                // Lista de seguimientos
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        contentPadding = PaddingValues(vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(uiState.seguimientos) { seguimiento ->
-                            SeguimientoCard(seguimiento)
-                        }
+                if (ui.items.isEmpty()) {
+                    item {
+                        Text(
+                            "Aún no hay gestiones registradas.",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                } else {
+                    items(ui.items, key = { it.seguimiento.idSeguimiento }) { item ->
+                        SeguimientoCard(item, ui.nombreOportunidad)
                     }
                 }
             }
+            ExtendedFloatingActionButton(
+                onClick = { onNuevaGestion(viewModel.idOportunidad) },
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text("Nueva gestión") },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+            )
         }
     }
 }
 
 @Composable
-fun SeguimientoCard(seguimiento: Seguimiento) {
+private fun SeguimientoCard(item: SeguimientoItem, nombreOportunidad: String) {
+    val s = item.seguimiento
+    val esCambioEstado = s.tipoAccion == Catalogos.TIPO_CAMBIO_ESTADO
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = if (esCambioEstado) {
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+        } else {
+            CardDefaults.cardColors()
+        }
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (esCambioEstado) {
+                    Icon(Icons.Default.SwapHoriz, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(
+                    text = s.tipoAccion,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             Text(
-                text = seguimiento.tipoAccion,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Fecha: ${seguimiento.fechaHora}",
+                text = "${s.fechaHora.comoFechaHora()} · ${item.autor}",
                 style = MaterialTheme.typography.bodySmall
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
-                text = "Resultado: ${seguimiento.resultado}",
+                text = if (esCambioEstado) s.resultado else "Resultado: ${s.resultado}",
                 style = MaterialTheme.typography.bodyMedium
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Próxima acción: ${seguimiento.proximaAccion}",
-                style = MaterialTheme.typography.labelLarge
-            )
-            Text(
-                text = "Programado para: ${seguimiento.fechaProximo}",
-                style = MaterialTheme.typography.bodySmall
-            )
+
+            // Los cambios de estado no programan una próxima gestión
+            if (!esCambioEstado) {
+                Spacer(Modifier.height(8.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Próxima acción: ${s.proximaAccion}",
+                    style = MaterialTheme.typography.labelLarge
+                )
+                Text(
+                    text = "Programada para: ${s.fechaProximo.comoFechaCorta()}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                if (s.fechaProximo > System.currentTimeMillis()) {
+                    Spacer(Modifier.height(8.dp))
+                    val inicio = s.fechaProximo.aInicioDeJornada()
+                    BotonAgregarCalendario(
+                        titulo = "Seguimiento: ${s.proximaAccion}",
+                        descripcion = "Oportunidad: $nombreOportunidad. Gestión previa: ${s.tipoAccion}",
+                        inicioMillis = inicio,
+                        finMillis = inicio + UNA_HORA,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
         }
     }
 }

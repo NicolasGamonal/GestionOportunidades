@@ -16,6 +16,8 @@ import duoc.example.gestionoportunidades.ui.organizaciones.DetalleOrganizacionVi
 import duoc.example.gestionoportunidades.ui.organizaciones.FormularioContactoViewModel
 import duoc.example.gestionoportunidades.ui.organizaciones.FormularioOrganizacionViewModel
 import duoc.example.gestionoportunidades.ui.organizaciones.OrganizacionesViewModel
+import duoc.example.gestionoportunidades.ui.seguimiento.FormularioSeguimientoViewModel
+import duoc.example.gestionoportunidades.ui.seguimiento.HistorialSeguimientoViewModel
 
 object AppViewModelProvider {
     val Factory = viewModelFactory {
@@ -59,6 +61,21 @@ object AppViewModelProvider {
                 createSavedStateHandle(),
                 app().container.contactoRepository,
                 app().container.organizacionRepository
+            )
+        }
+        initializer {
+            HistorialSeguimientoViewModel(
+                createSavedStateHandle(),
+                app().container.oportunidadRepository,
+                app().container.seguimientoRepository,
+                app().container.authRepository
+            )
+        }
+        initializer {
+            FormularioSeguimientoViewModel(
+                createSavedStateHandle(),
+                app().container.seguimientoRepository,
+                app().container.oportunidadRepository
             )
         }
     }

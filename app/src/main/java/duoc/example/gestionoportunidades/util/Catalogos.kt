@@ -19,4 +19,13 @@ object Catalogos {
         "Eventos", "Activaciones", "Marketing", "Comunicaciones",
         "Recursos Humanos", "Bienestar", "Beneficios", "Administración"
     )
+
+    const val TIPO_CAMBIO_ESTADO = "Cambio de estado"
+
+    val tiposAccion = listOf(
+        "Investigación inicial", "Búsqueda de contacto", "Primer contacto",
+        "Envío de presentación", "Envío de propuesta", "Solicitud de antecedentes",
+        "Reunión", "Llamada", "Seguimiento", "Recepción de respuesta",
+        "Confirmación", "Cierre"
+    )
 }

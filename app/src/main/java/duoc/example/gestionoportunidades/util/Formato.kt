@@ -38,3 +38,10 @@ fun Long.deDatePickerAFechaCorta(): String =
 fun String.fechaCortaADatePicker(): Long? = runCatching {
     LocalDate.parse(this, formatoFechaCorta).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
 }.getOrNull()
+
+/** 09:00 del día de esta fecha; sirve para crear eventos de calendario a partir de fechas sin hora. */
+fun Long.aInicioDeJornada(): Long {
+    val zona = ZoneId.systemDefault()
+    return Instant.ofEpochMilli(this).atZone(zona).toLocalDate()
+        .atTime(9, 0).atZone(zona).toInstant().toEpochMilli()
+}

@@ -45,13 +45,11 @@ import duoc.example.gestionoportunidades.ui.organizaciones.FormularioOrganizacio
 import duoc.example.gestionoportunidades.ui.organizaciones.OrganizacionesScreen
 import duoc.example.gestionoportunidades.ui.organizaciones.OrganizacionesViewModel
 import duoc.example.gestionoportunidades.ui.seguimiento.FormularioSeguimientoScreen
+import duoc.example.gestionoportunidades.ui.seguimiento.FormularioSeguimientoViewModel
 import duoc.example.gestionoportunidades.ui.seguimiento.HistorialSeguimientoScreen
-import duoc.example.gestionoportunidades.ui.seguimiento.SeguimientoViewModel
+import duoc.example.gestionoportunidades.ui.seguimiento.HistorialSeguimientoViewModel
 import duoc.example.gestionoportunidades.ui.supervisor.SupervisorScreen
 import duoc.example.gestionoportunidades.ui.supervisor.SupervisorViewModel
-
-// Pantallas que ya dibujan su propia barra superior: ocultamos la global para no duplicarla
-private val rutasConBarraPropia = setOf("historial_seguimiento", "formulario_seguimiento")
 
 @Composable
 fun NavegacionPrincipal() {
@@ -75,11 +73,8 @@ fun NavegacionPrincipal() {
     }
 
     val enLogin = rutaActual == Ruta.Login.ruta
-    val mostrarTopBar = !enLogin && rutaActual !in rutasConBarraPropia
+    val mostrarTopBar = !enLogin
     val esPantallaDelMenu = itemsMenu.any { it.first.ruta == rutaActual }
-
-    // ViewModel compartido del historial (se migra a Room en J4)
-    val seguimientoViewModel: SeguimientoViewModel = viewModel()
 
     Scaffold(
         topBar = {
@@ -92,6 +87,8 @@ fun NavegacionPrincipal() {
                     Ruta.DetalleOrganizacion.ruta -> "Organización"
                     Ruta.FormularioOrganizacion.ruta -> if (editando) "Editar organización" else "Nueva organización"
                     Ruta.FormularioContacto.ruta -> if (editando) "Editar contacto" else "Nuevo contacto"
+                    Ruta.HistorialSeguimiento.ruta -> "Historial de gestión"
+                    Ruta.FormularioSeguimiento.ruta -> "Nueva gestión"
                     else -> "Gestión"
                 }
                 TopBar(
@@ -167,7 +164,9 @@ fun NavegacionPrincipal() {
                 DetalleOportunidadScreen(
                     viewModel = vm,
                     onVolver = { navController.popBackStack() },
-                    onVerHistorial = { navController.navigate("historial_seguimiento") },
+                    onVerHistorial = { id ->
+                        navController.navigate(Ruta.HistorialSeguimiento.crear(id))
+                    },
                     onEditar = { id ->
                         navController.navigate(Ruta.FormularioOportunidad.editar(id))
                     }
@@ -267,18 +266,27 @@ fun NavegacionPrincipal() {
                 }
             }
 
-            composable("historial_seguimiento") {
+            composable(
+                route = Ruta.HistorialSeguimiento.ruta,
+                arguments = listOf(navArgument("idOportunidad") { type = NavType.LongType })
+            ) {
+                val vm: HistorialSeguimientoViewModel = viewModel(factory = AppViewModelProvider.Factory)
                 HistorialSeguimientoScreen(
-                    viewModel = seguimientoViewModel,
-                    onNavigateToNuevoSeguimiento = { navController.navigate("formulario_seguimiento") },
-                    onNavigateBack = { navController.popBackStack() }
+                    viewModel = vm,
+                    onVolver = { navController.popBackStack() },
+                    onNuevaGestion = { id -> navController.navigate(Ruta.FormularioSeguimiento.crear(id)) }
                 )
             }
 
-            composable("formulario_seguimiento") {
+            composable(
+                route = Ruta.FormularioSeguimiento.ruta,
+                arguments = listOf(navArgument("idOportunidad") { type = NavType.LongType })
+            ) {
+                val vm: FormularioSeguimientoViewModel = viewModel(factory = AppViewModelProvider.Factory)
                 FormularioSeguimientoScreen(
-                    viewModel = seguimientoViewModel,
-                    onNavigateBack = { navController.popBackStack() }
+                    viewModel = vm,
+                    onGuardado = { navController.popBackStack() },
+                    onCancelar = { navController.popBackStack() }
                 )
             }
         }
