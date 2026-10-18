@@ -12,6 +12,10 @@ import androidx.lifecycle.createSavedStateHandle
 import duoc.example.gestionoportunidades.ui.oportunidades.DetalleOportunidadViewModel
 import duoc.example.gestionoportunidades.ui.oportunidades.FormularioOportunidadViewModel
 import duoc.example.gestionoportunidades.ui.oportunidades.OportunidadesViewModel
+import duoc.example.gestionoportunidades.ui.organizaciones.DetalleOrganizacionViewModel
+import duoc.example.gestionoportunidades.ui.organizaciones.FormularioContactoViewModel
+import duoc.example.gestionoportunidades.ui.organizaciones.FormularioOrganizacionViewModel
+import duoc.example.gestionoportunidades.ui.organizaciones.OrganizacionesViewModel
 
 object AppViewModelProvider {
     val Factory = viewModelFactory {
@@ -36,6 +40,24 @@ object AppViewModelProvider {
             FormularioOportunidadViewModel(
                 createSavedStateHandle(),
                 app().container.oportunidadRepository,
+                app().container.organizacionRepository
+            )
+        }
+        initializer { OrganizacionesViewModel(app().container.organizacionRepository) }
+        initializer {
+            DetalleOrganizacionViewModel(
+                createSavedStateHandle(),
+                app().container.organizacionRepository,
+                app().container.contactoRepository
+            )
+        }
+        initializer {
+            FormularioOrganizacionViewModel(createSavedStateHandle(), app().container.organizacionRepository)
+        }
+        initializer {
+            FormularioContactoViewModel(
+                createSavedStateHandle(),
+                app().container.contactoRepository,
                 app().container.organizacionRepository
             )
         }

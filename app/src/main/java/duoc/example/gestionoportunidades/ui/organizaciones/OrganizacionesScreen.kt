@@ -6,141 +6,95 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import duoc.example.gestionoportunidades.data.Organizacion
-import duoc.example.gestionoportunidades.data.Contacto
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import duoc.example.gestionoportunidades.model.Organizacion
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrganizacionesScreen(
-    onNuevaOrganizacion: () -> Unit // Lo usaremos en el siguiente paso para el formulario
+    viewModel: OrganizacionesViewModel,
+    onVerDetalle: (Long) -> Unit,
+    onNueva: () -> Unit
 ) {
-    // MOCK: Datos ficticios basados en el modelo de datos del plan
-    // Nota: Si los parámetros de tus data classes en la carpeta 'data' son distintos, ajústalos aquí.
-    val organizacionesMock = listOf(
-        Organizacion(
-            id = 1,
-            nombre = "Empresa Alpha",
-            tipo = "Empresa",
-            rubro = "Tecnología",
-            comuna = "Providencia"
-        ),
-        Organizacion(
-            id = 2,
-            nombre = "Muni Florida",
-            tipo = "Municipalidad",
-            rubro = "Sector Público",
-            comuna = "La Florida"
-        )
-    )
+    val ui by viewModel.uiState.collectAsStateWithLifecycle()
+    val busqueda by viewModel.busqueda.collectAsStateWithLifecycle()
 
-    // MOCK: Contactos ficticios con cargo o área como pide la tarea J3[cite: 1]
-    val contactosMock = listOf(
-        Contacto(
-            id = 1,
-            nombre = "Juan Pérez",
-            cargo = "Gerente de RRHH",
-            area = "Recursos Humanos",
-            correo = "jperez@alpha.cl",
-            telefono = "+56912345678",
-            idOrganizacion = 1
-        ),
-        Contacto(
-            id = 2,
-            nombre = "María Gómez",
-            cargo = "Encargada de Eventos",
-            area = "Comunicaciones",
-            correo = "mgomez@florida.cl",
-            telefono = "+56987654321",
-            idOrganizacion = 2
-        )
-    )
-
-    Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onNuevaOrganizacion, // <-- USARLO AQUÍ
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Nueva Organización")
-            }
-        }
-
-    ) { paddingValues ->
+    Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(organizacionesMock) { org ->
-                // Buscamos el contacto que pertenece a esta organización
-                val contactoAsociado = contactosMock.find { it.idOrganizacion == org.id }
-                OrganizacionCard(organizacion = org, contacto = contactoAsociado)
+            item {
+                OutlinedTextField(
+                    value = busqueda,
+                    onValueChange = viewModel::onBusquedaChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Buscar organización...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+                    singleLine = true
+                )
+            }
+            when {
+                ui.isLoading -> item {
+                    Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+                ui.organizaciones.isEmpty() -> item {
+                    Text(
+                        text = if (busqueda.isBlank()) "Aún no hay organizaciones registradas"
+                        else "Ninguna organización coincide con la búsqueda",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+                else -> items(ui.organizaciones, key = { it.idOrganizacion }) { org ->
+                    OrganizacionCard(org) { onVerDetalle(org.idOrganizacion) }
+                }
             }
         }
+        ExtendedFloatingActionButton(
+            onClick = onNueva,
+            icon = { Icon(Icons.Default.Add, contentDescription = null) },
+            text = { Text("Nueva") },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+        )
     }
 }
 
 @Composable
-fun OrganizacionCard(organizacion: Organizacion, contacto: Contacto?) {
+private fun OrganizacionCard(organizacion: Organizacion, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Business,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+                Icon(Icons.Default.Business, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
                 Text(
                     text = organizacion.nombre,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
-
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = "${organizacion.tipo} - ${organizacion.rubro} (${organizacion.comuna})")
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-
-            if (contacto != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Contacto Principal",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(text = "${contacto.nombre} - ${contacto.cargo} (${contacto.area})", style = MaterialTheme.typography.bodyMedium)
-                Text(text = contacto.correo, style = MaterialTheme.typography.bodyMedium)
-            } else {
-                Text(text = "Sin contacto registrado", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "${organizacion.tipo} · ${organizacion.rubro}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = organizacion.comuna,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

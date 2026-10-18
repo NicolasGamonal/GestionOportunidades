@@ -20,7 +20,7 @@ interface ContactoDao {
     @Query("SELECT * FROM contactos WHERE idContacto = :id")
     suspend fun obtenerPorId(id: Long): Contacto?
 
-    @Query("SELECT * FROM contactos WHERE idOrganizacion = :idOrg")
+    @Query("SELECT * FROM contactos WHERE idOrganizacion = :idOrg ORDER BY nombre")
     fun obtenerContactosPorOrganizacion(idOrg: Long): Flow<List<Contacto>>
 
     @Query("SELECT * FROM contactos WHERE nombre LIKE '%' || :busqueda || '%'")
@@ -28,4 +28,6 @@ interface ContactoDao {
 
     @Query("SELECT * FROM contactos")
     fun obtenerTodos(): Flow<List<Contacto>>
+
+
 }

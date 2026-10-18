@@ -16,9 +16,10 @@ import duoc.example.gestionoportunidades.model.Oportunidad
 import duoc.example.gestionoportunidades.ui.components.StatusChip
 import duoc.example.gestionoportunidades.ui.nativo.BotonAgregarCalendario
 import duoc.example.gestionoportunidades.ui.nativo.SeccionEvidencia
+import duoc.example.gestionoportunidades.util.Estados
+import duoc.example.gestionoportunidades.util.comoFechaCorta
 import duoc.example.gestionoportunidades.util.comoFechaHora
 import duoc.example.gestionoportunidades.util.comoPesos
-import duoc.example.gestionoportunidades.util.Estados
 
 @Composable
 fun DetalleOportunidadScreen(
@@ -52,9 +53,9 @@ fun DetalleOportunidadScreen(
                 responsable = uiState.responsable,
                 estadosPermitidos = uiState.estadosPermitidos,
                 onCambiarEstado = viewModel::cambiarEstado,
+                onEditar = { onEditar(oportunidad.idOportunidad) },
                 onVolver = onVolver,
-                onVerHistorial = onVerHistorial,
-                onEditar = { onEditar(oportunidad.idOportunidad) }
+                onVerHistorial = onVerHistorial
             )
         }
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
@@ -73,6 +74,7 @@ private fun MensajeCentrado(texto: String, onVolver: () -> Unit) {
         OutlinedButton(onClick = onVolver) { Text("Volver") }
     }
 }
+
 @Composable
 private fun DetalleContenido(
     oportunidad: Oportunidad,
@@ -80,9 +82,9 @@ private fun DetalleContenido(
     responsable: String,
     estadosPermitidos: List<String>,
     onCambiarEstado: (String) -> Unit,
+    onEditar: () -> Unit,
     onVolver: () -> Unit,
-    onVerHistorial: () -> Unit,
-    onEditar: (Long) -> Unit
+    onVerHistorial: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -104,6 +106,13 @@ private fun DetalleContenido(
             StatusChip(estado = oportunidad.estado)
         }
 
+        // Editar: el ViewModel del formulario vuelve a validar el permiso
+        OutlinedButton(onClick = onEditar, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.Edit, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Editar oportunidad")
+        }
+
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
         DetalleItem("Organización", organizacion)
@@ -116,7 +125,7 @@ private fun DetalleContenido(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        DetalleItem("Detectada el", oportunidad.fechaDeteccion.comoFechaHora())
+        DetalleItem("Detectada el", oportunidad.fechaDeteccion.comoFechaCorta())
         DetalleItem("Inicio", oportunidad.fechaInicio.comoFechaHora())
         DetalleItem("Término", oportunidad.fechaTermino.comoFechaHora())
 
@@ -131,9 +140,11 @@ private fun DetalleContenido(
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
         Text("Observaciones:", fontWeight = FontWeight.Bold)
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-        SeccionCambioEstado(oportunidad.estado, estadosPermitidos, onCambiarEstado)
         Text(oportunidad.observaciones, style = MaterialTheme.typography.bodyLarge)
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        SeccionCambioEstado(oportunidad.estado, estadosPermitidos, onCambiarEstado)
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -150,14 +161,6 @@ private fun DetalleContenido(
         OutlinedButton(onClick = onVolver, modifier = Modifier.fillMaxWidth()) {
             Text("Volver a la lista")
         }
-    }
-}
-
-@Composable
-fun DetalleItem(titulo: String, valor: String) {
-    Column(modifier = Modifier.padding(bottom = 4.dp)) {
-        Text(text = titulo, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-        Text(text = valor, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -220,5 +223,13 @@ private fun SeccionCambioEstado(
                 TextButton(onClick = { pendiente = null }) { Text("Cancelar") }
             }
         )
+    }
+}
+
+@Composable
+fun DetalleItem(titulo: String, valor: String) {
+    Column(modifier = Modifier.padding(bottom = 4.dp)) {
+        Text(text = titulo, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+        Text(text = valor, style = MaterialTheme.typography.bodyLarge)
     }
 }

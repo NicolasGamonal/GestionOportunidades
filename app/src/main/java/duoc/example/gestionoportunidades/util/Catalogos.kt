@@ -11,4 +11,12 @@ object Catalogos {
         "Activación comercial",
         "Otra instancia relevante"
     )
+    val tiposOrganizacion = listOf(
+        "Empresa", "Municipalidad", "Institución pública", "Institución privada",
+        "Organizador de eventos", "Centro comercial", "Asociación", "Otra entidad"
+    )
+    val areasContacto = listOf(
+        "Eventos", "Activaciones", "Marketing", "Comunicaciones",
+        "Recursos Humanos", "Bienestar", "Beneficios", "Administración"
+    )
 }

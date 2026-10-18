@@ -17,4 +17,6 @@ class OrganizacionRepository(private val db: AppDatabase) {
     suspend fun insertar(organizacion: Organizacion): Long = dao.insertarOrganizacion(organizacion)
 
     suspend fun actualizar(organizacion: Organizacion) = dao.actualizarOrganizacion(organizacion)
+
+    fun observarPorId(id: Long): Flow<Organizacion?> = dao.observarPorId(id)
 }

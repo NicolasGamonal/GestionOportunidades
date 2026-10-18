@@ -23,6 +23,9 @@ interface OrganizacionDao {
     @Query("SELECT * FROM organizaciones")
     fun obtenerTodas(): Flow<List<Organizacion>>
 
-    @Query("SELECT * FROM organizaciones WHERE nombre LIKE '%' || :busqueda || '%'")
+    @Query("SELECT * FROM organizaciones WHERE nombre LIKE '%' || :busqueda || '%' ORDER BY nombre")
     fun buscarPorNombre(busqueda: String): Flow<List<Organizacion>>
+
+    @Query("SELECT * FROM organizaciones WHERE idOrganizacion = :id")
+    fun observarPorId(id: Long): Flow<Organizacion?>
 }

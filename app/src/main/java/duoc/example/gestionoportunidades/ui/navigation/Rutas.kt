@@ -11,8 +11,21 @@ sealed class Ruta(val ruta: String, val titulo: String) {
         fun crear(id: Long) = "oportunidades/$id"
     }
 
+    // El id es opcional: sin id (-1) se crea, con id se edita
     object FormularioOportunidad : Ruta("formulario_oportunidad?id={id}", "Oportunidad") {
         fun crear() = "formulario_oportunidad"
         fun editar(id: Long) = "formulario_oportunidad?id=$id"
+    }
+
+    object DetalleOrganizacion : Ruta("organizaciones/{id}", "Organización") {
+        fun crear(id: Long) = "organizaciones/$id"
+    }
+    object FormularioOrganizacion : Ruta("formulario_organizacion?id={id}", "Organización") {
+        fun crear() = "formulario_organizacion"
+        fun editar(id: Long) = "formulario_organizacion?id=$id"
+    }
+    object FormularioContacto : Ruta("formulario_contacto/{idOrganizacion}?id={id}", "Contacto") {
+        fun crear(idOrganizacion: Long) = "formulario_contacto/$idOrganizacion"
+        fun editar(idOrganizacion: Long, id: Long) = "formulario_contacto/$idOrganizacion?id=$id"
     }
 }

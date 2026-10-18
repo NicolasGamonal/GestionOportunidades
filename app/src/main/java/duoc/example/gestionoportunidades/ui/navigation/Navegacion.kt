@@ -36,8 +36,14 @@ import duoc.example.gestionoportunidades.ui.oportunidades.FormularioOportunidadS
 import duoc.example.gestionoportunidades.ui.oportunidades.FormularioOportunidadViewModel
 import duoc.example.gestionoportunidades.ui.oportunidades.OportunidadesScreen
 import duoc.example.gestionoportunidades.ui.oportunidades.OportunidadesViewModel
+import duoc.example.gestionoportunidades.ui.organizaciones.DetalleOrganizacionScreen
+import duoc.example.gestionoportunidades.ui.organizaciones.DetalleOrganizacionViewModel
+import duoc.example.gestionoportunidades.ui.organizaciones.FormularioContactoScreen
+import duoc.example.gestionoportunidades.ui.organizaciones.FormularioContactoViewModel
 import duoc.example.gestionoportunidades.ui.organizaciones.FormularioOrganizacionScreen
+import duoc.example.gestionoportunidades.ui.organizaciones.FormularioOrganizacionViewModel
 import duoc.example.gestionoportunidades.ui.organizaciones.OrganizacionesScreen
+import duoc.example.gestionoportunidades.ui.organizaciones.OrganizacionesViewModel
 import duoc.example.gestionoportunidades.ui.seguimiento.FormularioSeguimientoScreen
 import duoc.example.gestionoportunidades.ui.seguimiento.HistorialSeguimientoScreen
 import duoc.example.gestionoportunidades.ui.seguimiento.SeguimientoViewModel
@@ -72,17 +78,20 @@ fun NavegacionPrincipal() {
     val mostrarTopBar = !enLogin && rutaActual !in rutasConBarraPropia
     val esPantallaDelMenu = itemsMenu.any { it.first.ruta == rutaActual }
 
-    // ViewModels compartidos entre pantallas (los de J2 a J4 se migrarán a la fábrica)
+    // ViewModel compartido del historial (se migra a Room en J4)
     val seguimientoViewModel: SeguimientoViewModel = viewModel()
 
     Scaffold(
         topBar = {
             if (mostrarTopBar) {
+                val idArgumento = navBackStackEntry?.arguments?.getLong("id") ?: -1L
+                val editando = idArgumento > 0
                 val titulo = itemsMenu.find { it.first.ruta == rutaActual }?.third ?: when (rutaActual) {
                     Ruta.DetalleOportunidad.ruta -> "Detalle"
-                    Ruta.FormularioOportunidad.ruta ->
-                        if ((navBackStackEntry?.arguments?.getLong("id") ?: -1L) > 0) "Editar oportunidad"
-                        else "Nueva oportunidad"
+                    Ruta.FormularioOportunidad.ruta -> if (editando) "Editar oportunidad" else "Nueva oportunidad"
+                    Ruta.DetalleOrganizacion.ruta -> "Organización"
+                    Ruta.FormularioOrganizacion.ruta -> if (editando) "Editar organización" else "Nueva organización"
+                    Ruta.FormularioContacto.ruta -> if (editando) "Editar contacto" else "Nuevo contacto"
                     else -> "Gestión"
                 }
                 TopBar(
@@ -106,9 +115,7 @@ fun NavegacionPrincipal() {
                             icon = { Icon(icono, contentDescription = etiqueta) },
                             label = { Text(etiqueta) },
                             selected = rutaActual == ruta.ruta,
-                            onClick = {
-                                navController.irAPestana(ruta.ruta)
-                            }
+                            onClick = { navController.irAPestana(ruta.ruta) }
                         )
                     }
                 }
@@ -135,13 +142,109 @@ fun NavegacionPrincipal() {
                 val vm: DashboardViewModel = viewModel(factory = AppViewModelProvider.Factory)
                 DashboardScreen(
                     viewModel = vm,
-                    onVerOportunidad = { id -> navController.navigate(Ruta.DetalleOportunidad.crear(id)) }
+                    onVerOportunidad = { id ->
+                        navController.navigate(Ruta.DetalleOportunidad.crear(id))
+                    }
+                )
+            }
+
+            composable(Ruta.Oportunidades.ruta) {
+                val vm: OportunidadesViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                OportunidadesScreen(
+                    viewModel = vm,
+                    onVerDetalle = { id ->
+                        navController.navigate(Ruta.DetalleOportunidad.crear(id))
+                    },
+                    onNueva = { navController.navigate(Ruta.FormularioOportunidad.crear()) }
+                )
+            }
+
+            composable(
+                route = Ruta.DetalleOportunidad.ruta,
+                arguments = listOf(navArgument("id") { type = NavType.LongType })
+            ) {
+                val vm: DetalleOportunidadViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                DetalleOportunidadScreen(
+                    viewModel = vm,
+                    onVolver = { navController.popBackStack() },
+                    onVerHistorial = { navController.navigate("historial_seguimiento") },
+                    onEditar = { id ->
+                        navController.navigate(Ruta.FormularioOportunidad.editar(id))
+                    }
+                )
+            }
+
+            composable(
+                route = Ruta.FormularioOportunidad.ruta,
+                arguments = listOf(navArgument("id") {
+                    type = NavType.LongType
+                    defaultValue = -1L
+                })
+            ) {
+                val vm: FormularioOportunidadViewModel =
+                    viewModel(factory = AppViewModelProvider.Factory)
+                FormularioOportunidadScreen(
+                    viewModel = vm,
+                    onGuardado = { navController.popBackStack() },
+                    onCancelar = { navController.popBackStack() }
                 )
             }
 
             composable(Ruta.Organizaciones.ruta) {
+                val vm: OrganizacionesViewModel = viewModel(factory = AppViewModelProvider.Factory)
                 OrganizacionesScreen(
-                    onNuevaOrganizacion = { navController.navigate("formulario_organizacion") }
+                    viewModel = vm,
+                    onVerDetalle = { id -> navController.navigate(Ruta.DetalleOrganizacion.crear(id)) },
+                    onNueva = { navController.navigate(Ruta.FormularioOrganizacion.crear()) }
+                )
+            }
+
+            composable(
+                route = Ruta.DetalleOrganizacion.ruta,
+                arguments = listOf(navArgument("id") { type = NavType.LongType })
+            ) {
+                val vm: DetalleOrganizacionViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                DetalleOrganizacionScreen (
+                    viewModel = vm,
+                    onVolver = { navController.popBackStack() },
+                    onEditar = { id -> navController.navigate(Ruta.FormularioOrganizacion.editar(id)) },
+                    onNuevoContacto = { idOrg -> navController.navigate(Ruta.FormularioContacto.crear(idOrg)) },
+                    onEditarContacto = { idOrg, idContacto ->
+                        navController.navigate(Ruta.FormularioContacto.editar(idOrg, idContacto))
+                    }
+                )
+            }
+
+            composable(
+                route = Ruta.FormularioOrganizacion.ruta,
+                arguments = listOf(navArgument("id") {
+                    type = NavType.LongType
+                    defaultValue = -1L
+                })
+            ) {
+                val vm: FormularioOrganizacionViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                FormularioOrganizacionScreen(
+                    viewModel = vm,
+                    onGuardado = { navController.popBackStack() },
+                    onCancelar = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = Ruta.FormularioContacto.ruta,
+                arguments = listOf(
+                    navArgument("idOrganizacion") { type = NavType.LongType },
+                    navArgument("id") {
+                        type = NavType.LongType
+                        defaultValue = -1L
+                    }
+                )
+            ) {
+                val vm: FormularioContactoViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                FormularioContactoScreen (
+                    viewModel = vm,
+                    onGuardado = { navController.popBackStack() },
+                    onCancelar = { navController.popBackStack() }
                 )
             }
 
@@ -150,7 +253,9 @@ fun NavegacionPrincipal() {
                     val vm: SupervisorViewModel = viewModel(factory = AppViewModelProvider.Factory)
                     SupervisorScreen(
                         viewModel = vm,
-                        onVerOportunidad = { id -> navController.navigate(Ruta.DetalleOportunidad.crear(id)) }
+                        onVerOportunidad = { id ->
+                            navController.navigate(Ruta.DetalleOportunidad.crear(id))
+                        }
                     )
                 } else {
                     // Bloqueo de ruta: un ejecutivo no puede ver el panel del supervisor
@@ -160,10 +265,6 @@ fun NavegacionPrincipal() {
                         }
                     }
                 }
-            }
-
-            composable("formulario_organizacion") {
-                FormularioOrganizacionScreen(onVolver = { navController.popBackStack() })
             }
 
             composable("historial_seguimiento") {
@@ -180,47 +281,11 @@ fun NavegacionPrincipal() {
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
-
-
-            composable(Ruta.Oportunidades.ruta) {
-                val vm: OportunidadesViewModel = viewModel(factory = AppViewModelProvider.Factory)
-                OportunidadesScreen(
-                    viewModel = vm,
-                    onVerDetalle = { id -> navController.navigate(Ruta.DetalleOportunidad.crear(id)) },
-                    onNueva = { navController.navigate(Ruta.FormularioOportunidad.crear()) }
-                )
-            }
-
-            composable(
-                route = Ruta.DetalleOportunidad.ruta,
-                arguments = listOf(navArgument("id") { type = NavType.LongType })
-            ) {
-                val vm: DetalleOportunidadViewModel = viewModel(factory = AppViewModelProvider.Factory)
-                DetalleOportunidadScreen(
-                    viewModel = vm,
-                    onVolver = { navController.popBackStack() },
-                    onVerHistorial = { navController.navigate("historial_seguimiento") },
-                    onEditar = { id -> navController.navigate(Ruta.FormularioOportunidad.editar(id)) }
-                )
-            }
-            composable(
-                route = Ruta.FormularioOportunidad.ruta,
-                arguments = listOf(navArgument("id") {
-                    type = NavType.LongType
-                    defaultValue = -1L
-                })
-            ) {
-                val vm: FormularioOportunidadViewModel = viewModel(factory = AppViewModelProvider.Factory)
-                FormularioOportunidadScreen (
-                    viewModel = vm,
-                    onGuardado = { navController.popBackStack() },
-                    onCancelar = { navController.popBackStack() }
-                )
-            }
         }
-
     }
 }
+
+// Cada pestaña siempre abre en su pantalla principal, con el Dashboard como base de la pila
 private fun NavController.irAPestana(ruta: String) {
     navigate(ruta) {
         popUpTo(Ruta.Dashboard.ruta)

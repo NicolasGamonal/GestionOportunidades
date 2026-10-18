@@ -47,4 +47,6 @@ object Permisos {
     fun puedeConfirmarODescartar(rol: String): Boolean {
         return rol == "SUPERVISOR"
     }
+    /** Solo el supervisor modifica los datos de una organización (son compartidos por todo el equipo). **/
+    fun puedeEditarOrganizacion(rol: String): Boolean = rol == "SUPERVISOR"
 }
