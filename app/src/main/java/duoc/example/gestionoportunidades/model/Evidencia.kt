@@ -4,7 +4,6 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import duoc.example.gestionoportunidades.model.Oportunidad
 
 @Entity(
     tableName = "evidencias",
@@ -19,8 +18,8 @@ import duoc.example.gestionoportunidades.model.Oportunidad
     indices = [Index("idOportunidad")]
 )
 data class Evidencia(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val rutaArchivo: String,
+    @PrimaryKey(autoGenerate = true) val idEvidencia: Long = 0,
+    val rutaArchivo: String,      // relativa a filesDir, p. ej. "evidencias/evidencia_123.jpg"
     val fecha: Long,
     val idOportunidad: Long
 )

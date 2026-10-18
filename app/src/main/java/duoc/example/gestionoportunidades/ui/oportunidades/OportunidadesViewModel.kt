@@ -45,10 +45,9 @@ class OportunidadesViewModel(
     fun onEstadoChange(valor: String) = _filtros.update { it.copy(estado = valor) }
     fun onPrioridadChange(valor: String) = _filtros.update { it.copy(prioridad = valor) }
 
-    // El ejecutivo solo ve lo asignado a él; 0 = sin restricción (supervisor)
     private fun idResponsableDeLaSesion(): Long {
-        val usuario = SesionManager.usuarioActual
-        return if (usuario?.rol == "EJECUTIVO") usuario.idUsuario else 0L
+        val usuario = SesionManager.usuarioActual ?: return -1L   // sin sesión: no se muestra nada
+        return if (usuario.rol == "SUPERVISOR") 0L else usuario.idUsuario
     }
     fun limpiarFiltros() = _filtros.update { it.copy(estado = "", prioridad = "") }
 }

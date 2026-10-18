@@ -22,7 +22,14 @@ import duoc.example.gestionoportunidades.ui.seguimiento.HistorialSeguimientoView
 object AppViewModelProvider {
     val Factory = viewModelFactory {
         initializer { AuthViewModel(app().container.authRepository) }
-        initializer { DashboardViewModel(app().container.oportunidadRepository) }
+
+        initializer {
+            DashboardViewModel(
+                app().container.oportunidadRepository,
+                app().container.seguimientoRepository
+            )
+        }
+
         initializer {
             SupervisorViewModel(
                 app().container.oportunidadRepository,
@@ -30,12 +37,14 @@ object AppViewModelProvider {
             )
         }
         initializer { OportunidadesViewModel(app().container.oportunidadRepository) }
+
         initializer {
             DetalleOportunidadViewModel(
                 createSavedStateHandle(),
                 app().container.oportunidadRepository,
                 app().container.organizacionRepository,
-                app().container.authRepository
+                app().container.authRepository,
+                app().container.evidenciaRepository
             )
         }
         initializer {
@@ -78,6 +87,7 @@ object AppViewModelProvider {
                 app().container.oportunidadRepository
             )
         }
+
     }
 }
 

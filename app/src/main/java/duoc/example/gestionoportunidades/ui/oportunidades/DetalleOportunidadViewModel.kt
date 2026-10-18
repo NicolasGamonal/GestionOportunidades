@@ -4,8 +4,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import duoc.example.gestionoportunidades.data.repository.AuthRepository
+import duoc.example.gestionoportunidades.data.repository.EvidenciaRepository
 import duoc.example.gestionoportunidades.data.repository.OportunidadRepository
 import duoc.example.gestionoportunidades.data.repository.OrganizacionRepository
+import duoc.example.gestionoportunidades.model.Evidencia
 import duoc.example.gestionoportunidades.model.Oportunidad
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
 import duoc.example.gestionoportunidades.util.Estados
@@ -23,6 +25,7 @@ data class DetalleUiState(
     val organizacion: String = "",
     val responsable: String = "",
     val estadosPermitidos: List<String> = emptyList(),
+    val evidencias: List<Evidencia> = emptyList(),
     val sinAcceso: Boolean = false,
     val mensajeExito: String? = null,
     val mensajeError: String? = null,
@@ -35,7 +38,8 @@ class DetalleOportunidadViewModel(
     savedStateHandle: SavedStateHandle,
     private val oportunidadRepository: OportunidadRepository,
     organizacionRepository: OrganizacionRepository,
-    authRepository: AuthRepository
+    authRepository: AuthRepository,
+    private val evidenciaRepository: EvidenciaRepository
 ) : ViewModel() {
 
     private val idOportunidad: Long = checkNotNull(savedStateHandle.get<Long>("id"))
@@ -65,15 +69,18 @@ class DetalleOportunidadViewModel(
         )
     }
 
-    val uiState: StateFlow<DetalleUiState> = combine(datos, _mensajes) { d, m ->
-        d.copy(mensajeExito = m.exito, mensajeError = m.error)
+    val uiState: StateFlow<DetalleUiState> = combine(
+        datos,
+        evidenciaRepository.observarPorOportunidad(idOportunidad),
+        _mensajes
+    ) { d, evidencias, m ->
+        d.copy(evidencias = evidencias, mensajeExito = m.exito, mensajeError = m.error)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetalleUiState())
 
     fun cambiarEstado(nuevoEstado: String) {
         val usuario = SesionManager.usuarioActual ?: return
         val actual = uiState.value.oportunidad ?: return
 
-        // Doble control: aunque la interfaz no muestre el botón, se vuelve a validar aquí
         if (!Permisos.puedeCambiarEstado(usuario.rol, actual.estado, nuevoEstado)) {
             _mensajes.value = Mensajes(error = "No tienes permiso para este cambio de estado")
             return
@@ -90,6 +97,24 @@ class DetalleOportunidadViewModel(
                 _mensajes.value = Mensajes(exito = "Estado actualizado a $nuevoEstado")
             } catch (e: Exception) {
                 _mensajes.value = Mensajes(error = "No se pudo actualizar: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    /** Guarda en Room la foto recién capturada, asociada a esta oportunidad. */
+    fun registrarEvidencia(rutaArchivo: String) {
+        viewModelScope.launch {
+            try {
+                evidenciaRepository.registrar(
+                    Evidencia(
+                        rutaArchivo = rutaArchivo,
+                        fecha = System.currentTimeMillis(),
+                        idOportunidad = idOportunidad
+                    )
+                )
+                _mensajes.value = Mensajes(exito = "Foto guardada en la oportunidad")
+            } catch (e: Exception) {
+                _mensajes.value = Mensajes(error = "No se pudo guardar la foto: ${e.localizedMessage}")
             }
         }
     }

@@ -1,132 +1,164 @@
 package duoc.example.gestionoportunidades.ui.nativo
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
-import java.io.File
+import duoc.example.gestionoportunidades.model.Evidencia
+import duoc.example.gestionoportunidades.util.comoFechaHora
 
 @Composable
-fun SeccionEvidencia() {
+fun SeccionEvidencia(
+    evidencias: List<Evidencia>,
+    onFotoCapturada: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
 
-    // Estados para guardar la URI temporal (antes de tomar foto) y la final
-    var uriTemporal by remember { mutableStateOf<Uri?>(null) }
-    var uriImagenGuardada by remember { mutableStateOf<Uri?>(null) }
-
-    // Estado para saber si el usuario denegó el permiso[cite: 3]
+    // rememberSaveable: la ruta pendiente sobrevive a una rotación mientras la cámara está abierta
+    var rutaPendiente by rememberSaveable { mutableStateOf<String?>(null) }
     var permisoDenegado by remember { mutableStateOf(false) }
-    // Estado para saber si el usuario canceló la captura[cite: 3]
-    var capturaCancelada by remember { mutableStateOf(false) }
+    var mensaje by remember { mutableStateOf<String?>(null) }
+    var fotoAmpliada by remember { mutableStateOf<Evidencia?>(null) }
 
-    // 1. Launcher para la cámara (captura la foto)[cite: 3]
     val camaraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { exito ->
-        if (exito) {
-            uriImagenGuardada = uriTemporal // Si toma la foto, guardamos la URI
-            capturaCancelada = false
-        } else {
-            // Manejar la cancelación[cite: 3]
-            capturaCancelada = true
+        val ruta = rutaPendiente
+        rutaPendiente = null
+        if (ruta != null) {
+            val archivo = ArchivosEvidencia.archivo(context, ruta)
+            if (exito && archivo.exists() && archivo.length() > 0) {
+                mensaje = null
+                onFotoCapturada(ruta)
+            } else {
+                archivo.delete()      // no dejar archivos vacíos si se canceló
+                mensaje = "Captura cancelada. No se guardó ninguna foto."
+            }
         }
     }
 
-    // 2. Launcher para pedir el permiso de la cámara[cite: 3]
+    fun abrirCamara() {
+        val ruta = ArchivosEvidencia.nuevaRutaRelativa()
+        try {
+            rutaPendiente = ruta
+            camaraLauncher.launch(
+                ArchivosEvidencia.uriParaCamara(context, ArchivosEvidencia.archivo(context, ruta))
+            )
+        } catch (e: ActivityNotFoundException) {
+            rutaPendiente = null
+            mensaje = "No hay una aplicación de cámara disponible en este dispositivo."
+        }
+    }
+
     val permisoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { otorgado ->
-        if (otorgado) {
-            permisoDenegado = false
-            // Si da el permiso, creamos el archivo y lanzamos la cámara
-            val nuevaUri = crearUriArchivo(context)
-            uriTemporal = nuevaUri
-            camaraLauncher.launch(nuevaUri)
-        } else {
-            // Manejar la negación[cite: 3]
-            permisoDenegado = true
-        }
+        permisoDenegado = !otorgado
+        if (otorgado) abrirCamara()
     }
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text("Evidencia del Evento", style = MaterialTheme.typography.titleMedium)
+        Text("Evidencia fotográfica", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Usa solo imágenes de objetos o ficticias; no fotografíes personas.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
-        // Botón para iniciar el flujo
         Button(
             onClick = {
-                capturaCancelada = false
+                mensaje = null
                 permisoLauncher.launch(Manifest.permission.CAMERA)
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Icon(Icons.Default.CameraAlt, contentDescription = "Tomar Foto")
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Capturar Evidencia")
+            Icon(Icons.Default.CameraAlt, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Tomar foto")
         }
 
-        // Mensajes de feedback para el usuario
         if (permisoDenegado) {
             Text(
-                text = "Permiso de cámara denegado. No se puede tomar foto.",
+                "Permiso de cámara denegado. No se puede tomar la foto.",
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall
             )
+            // Tras denegar dos veces, Android deja de preguntar: solo se activa desde ajustes
+            TextButton(onClick = { abrirAjustesDeLaApp(context) }) {
+                Text("Abrir ajustes de la app")
+            }
         }
-        if (capturaCancelada) {
-            Text(
-                text = "Captura cancelada por el usuario.",
-                color = MaterialTheme.colorScheme.secondary,
-                style = MaterialTheme.typography.bodySmall
-            )
+        mensaje?.let {
+            Text(it, color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodySmall)
         }
 
-        // Mostrar la vista previa usando Coil si la foto fue exitosa[cite: 3]
-        if (uriImagenGuardada != null) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .padding(vertical = 8.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                AsyncImage(
-                    model = uriImagenGuardada,
-                    contentDescription = "Evidencia fotográfica",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                )
+        if (evidencias.isEmpty()) {
+            Text(
+                "Aún no hay fotos para esta oportunidad.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        } else {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(evidencias, key = { it.idEvidencia }) { evidencia ->
+                    Card(
+                        onClick = { fotoAmpliada = evidencia },
+                        modifier = Modifier.size(120.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        AsyncImage(
+                            model = ArchivosEvidencia.archivo(context, evidencia.rutaArchivo),
+                            contentDescription = "Evidencia fotográfica",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
             }
         }
     }
+
+    fotoAmpliada?.let { evidencia ->
+        AlertDialog(
+            onDismissRequest = { fotoAmpliada = null },
+            title = { Text(evidencia.fecha.comoFechaHora()) },
+            text = {
+                AsyncImage(
+                    model = ArchivosEvidencia.archivo(context, evidencia.rutaArchivo),
+                    contentDescription = "Evidencia fotográfica ampliada",
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                    contentScale = ContentScale.Fit
+                )
+            },
+            confirmButton = { TextButton(onClick = { fotoAmpliada = null }) { Text("Cerrar") } }
+        )
+    }
 }
 
-// Función auxiliar para crear el archivo temporal con FileProvider[cite: 3]
-fun crearUriArchivo(context: Context): Uri {
-    // Debe coincidir con la carpeta "evidencias" que pusimos en file_paths.xml
-    val carpeta = File(context.cacheDir, "evidencias")
-    carpeta.mkdirs() // IMPORTANTE: crear la carpeta si no existe
-
-    val archivo = File(carpeta, "evidencia_${System.currentTimeMillis()}.jpg")
-
-    // El authority debe ser EXACTO al que pusiste en el AndroidManifest.xml
-    return FileProvider.getUriForFile(
-        context,
-        "${context.packageName}.fileprovider",
-        archivo
+private fun abrirAjustesDeLaApp(context: Context) {
+    val intent = Intent(
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        Uri.fromParts("package", context.packageName, null)
     )
+    context.startActivity(intent)
 }

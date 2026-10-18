@@ -41,12 +41,8 @@ class OportunidadRepository(private val db: AppDatabase) {
         return oportunidadDao.obtenerPorResponsable(idUsuario)
     }
 
-    fun obtenerEventosProximos(fechaActual: Long): Flow<List<Oportunidad>> {
-        return oportunidadDao.obtenerEventosProximos(fechaActual)
-    }
-
-    fun obtenerSeguimientosAtrasados(fechaActual: Long): Flow<List<Seguimiento>> {
-        return seguimientoDao.obtenerSeguimientosAtrasados(fechaActual)
+    fun obtenerEventosProximos(desde: Long, idResponsable: Long): Flow<List<Oportunidad>> {
+        return oportunidadDao.obtenerEventosProximos(desde, idResponsable)
     }
 
     suspend fun actualizarEstado(id: Long, estado: String) {

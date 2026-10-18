@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import duoc.example.gestionoportunidades.model.AlertaSeguimiento
 import duoc.example.gestionoportunidades.model.Seguimiento
 import kotlinx.coroutines.flow.Flow
 
@@ -28,4 +29,30 @@ interface SeguimientoDao {
 
     @Query("SELECT * FROM seguimientos WHERE idUsuario = :idUsuario ORDER BY fechaHora DESC")
     fun obtenerPorUsuario(idUsuario: Long): Flow<List<Seguimiento>>
+
+    /**
+     * Última gestión (sin contar cambios de estado) de cada oportunidad no finalizada.
+     * idResponsable: 0 = todo el equipo; otro valor = solo esa persona.
+     */
+    @Query("""
+    SELECT s.idOportunidad AS idOportunidad,
+           o.nombre AS nombreOportunidad,
+           u.nombreCompleto AS nombreResponsable,
+           s.tipoAccion AS tipoAccion,
+           s.proximaAccion AS proximaAccion,
+           s.fechaProximo AS fechaProximo
+    FROM seguimientos s
+    INNER JOIN oportunidades o ON o.idOportunidad = s.idOportunidad
+    LEFT JOIN usuarios u ON u.idUsuario = o.idResponsable
+    WHERE s.tipoAccion != 'Cambio de estado'
+      AND s.fechaHora = (
+          SELECT MAX(s2.fechaHora) FROM seguimientos s2
+          WHERE s2.idOportunidad = s.idOportunidad
+            AND s2.tipoAccion != 'Cambio de estado'
+      )
+      AND o.estado NOT IN ('Confirmada', 'Descartada')
+      AND (:idResponsable = 0 OR o.idResponsable = :idResponsable)
+    ORDER BY s.fechaProximo ASC
+""")
+    fun obtenerUltimasGestiones(idResponsable: Long): Flow<List<AlertaSeguimiento>>
 }

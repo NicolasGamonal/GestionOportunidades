@@ -45,3 +45,7 @@ fun Long.aInicioDeJornada(): Long {
     return Instant.ofEpochMilli(this).atZone(zona).toLocalDate()
         .atTime(9, 0).atZone(zona).toInstant().toEpochMilli()
 }
+
+/** Medianoche de hoy en la zona del teléfono. */
+fun inicioDeHoyMillis(): Long =
+    LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()

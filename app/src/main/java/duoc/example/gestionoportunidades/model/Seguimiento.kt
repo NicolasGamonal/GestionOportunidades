@@ -19,11 +19,18 @@ import androidx.room.PrimaryKey
             parentColumns = ["idUsuario"],
             childColumns = ["idUsuario"],
             onDelete = ForeignKey.RESTRICT
+        ),
+        ForeignKey(
+            entity = Contacto::class,
+            parentColumns = ["idContacto"],
+            childColumns = ["idContacto"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
     indices = [
         Index(value = ["idOportunidad"]),
-        Index(value = ["idUsuario"])
+        Index(value = ["idUsuario"]),
+        Index(value = ["idContacto"])
     ]
 )
 data class Seguimiento(
@@ -36,5 +43,5 @@ data class Seguimiento(
     val resultado: String,
     val proximaAccion: String,
     val fechaProximo: Long,
-    val rutaFotoEvidencia: String? = null
+    val idContacto: Long? = null      // contacto con quien se hizo la gestión (opcional)
 )

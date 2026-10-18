@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
         Seguimiento::class,
         Evidencia::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -60,7 +60,14 @@ abstract class AppDatabase : RoomDatabase() {
                                 INSTANCE?.let { sembrarDatos(it) }
                             }
                         }
+                        override fun onDestructiveMigration(db: SupportSQLiteDatabase) {
+                            super.onDestructiveMigration(db)
+                            CoroutineScope(Dispatchers.IO).launch {
+                                INSTANCE?.let { sembrarDatos(it) }
+                            }
+                        }
                     })
+
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
@@ -275,5 +282,6 @@ abstract class AppDatabase : RoomDatabase() {
                 )
             )
         }
+
     }
 }

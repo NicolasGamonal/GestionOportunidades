@@ -1,6 +1,7 @@
 package duoc.example.gestionoportunidades.data.repository
 
 import duoc.example.gestionoportunidades.data.local.AppDatabase
+import duoc.example.gestionoportunidades.model.AlertaSeguimiento
 import duoc.example.gestionoportunidades.model.Seguimiento
 import kotlinx.coroutines.flow.Flow
 
@@ -20,4 +21,7 @@ class SeguimientoRepository(private val db: AppDatabase) {
     suspend fun insertar(seguimiento: Seguimiento): Long = dao.insertarSeguimiento(seguimiento)
 
     suspend fun actualizar(seguimiento: Seguimiento) = dao.actualizarSeguimiento(seguimiento)
+
+    fun obtenerUltimasGestiones(idResponsable: Long): Flow<List<AlertaSeguimiento>> =
+        dao.obtenerUltimasGestiones(idResponsable)
 }

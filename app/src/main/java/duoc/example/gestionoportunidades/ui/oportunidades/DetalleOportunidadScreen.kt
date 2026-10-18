@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import duoc.example.gestionoportunidades.model.Oportunidad
 import duoc.example.gestionoportunidades.ui.components.StatusChip
 import duoc.example.gestionoportunidades.ui.nativo.BotonAgregarCalendario
@@ -20,6 +21,7 @@ import duoc.example.gestionoportunidades.util.Estados
 import duoc.example.gestionoportunidades.util.comoFechaCorta
 import duoc.example.gestionoportunidades.util.comoFechaHora
 import duoc.example.gestionoportunidades.util.comoPesos
+import duoc.example.gestionoportunidades.model.Evidencia
 
 @Composable
 fun DetalleOportunidadScreen(
@@ -55,7 +57,9 @@ fun DetalleOportunidadScreen(
                 onCambiarEstado = viewModel::cambiarEstado,
                 onEditar = { onEditar(oportunidad.idOportunidad) },
                 onVolver = onVolver,
-                onVerHistorial = { onVerHistorial(oportunidad.idOportunidad) }
+                onVerHistorial = { onVerHistorial(oportunidad.idOportunidad) },
+                evidencias = uiState.evidencias,
+                onFotoCapturada = viewModel::registrarEvidencia,
             )
         }
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
@@ -84,7 +88,9 @@ private fun DetalleContenido(
     onCambiarEstado: (String) -> Unit,
     onEditar: () -> Unit,
     onVolver: () -> Unit,
-    onVerHistorial: () -> Unit
+    onVerHistorial: () -> Unit,
+    evidencias: List<Evidencia>,
+    onFotoCapturada: (String) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -148,7 +154,7 @@ private fun DetalleContenido(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        SeccionEvidencia()
+        SeccionEvidencia(evidencias = evidencias, onFotoCapturada = onFotoCapturada)
 
         Button(
             onClick = onVerHistorial,

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <!-- Define la carpeta donde se guardarán las fotos dentro del almacenamiento interno de la app -->
-    <cache-path name="evidencias_images" path="evidencias/" />
+    <!-- Almacenamiento interno permanente de la app (no lo vacía el sistema) -->
+    <files-path name="evidencias_images" path="evidencias/" />
 </paths>

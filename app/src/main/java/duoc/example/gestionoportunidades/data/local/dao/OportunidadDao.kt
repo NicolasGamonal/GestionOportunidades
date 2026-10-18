@@ -32,8 +32,14 @@ interface OportunidadDao {
     @Query("SELECT * FROM oportunidades WHERE idResponsable = :idUsuario")
     fun obtenerPorResponsable(idUsuario: Long): Flow<List<Oportunidad>>
 
-    @Query("SELECT * FROM oportunidades WHERE fechaInicio >= :fechaActual ORDER BY fechaInicio ASC")
-    fun obtenerEventosProximos(fechaActual: Long): Flow<List<Oportunidad>>
+    @Query("""
+    SELECT * FROM oportunidades
+    WHERE fechaInicio >= :desde
+      AND estado != 'Descartada'
+      AND (:idResponsable = 0 OR idResponsable = :idResponsable)
+    ORDER BY fechaInicio ASC
+""")
+    fun obtenerEventosProximos(desde: Long, idResponsable: Long): Flow<List<Oportunidad>>
 
     @Query("UPDATE oportunidades SET estado = :estado WHERE idOportunidad = :id")
     suspend fun actualizarEstado(id: Long, estado: String)
