@@ -60,6 +60,7 @@ fun DetalleOportunidadScreen(
                 onVerHistorial = { onVerHistorial(oportunidad.idOportunidad) },
                 evidencias = uiState.evidencias,
                 onFotoCapturada = viewModel::registrarEvidencia,
+                onEliminarFoto = viewModel::eliminarEvidencia
             )
         }
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
@@ -90,8 +91,10 @@ private fun DetalleContenido(
     onVolver: () -> Unit,
     onVerHistorial: () -> Unit,
     evidencias: List<Evidencia>,
-    onFotoCapturada: (String) -> Unit
-) {
+    onFotoCapturada: (String) -> Unit,
+    onEliminarFoto: (Evidencia) -> Unit
+
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -154,7 +157,11 @@ private fun DetalleContenido(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        SeccionEvidencia(evidencias = evidencias, onFotoCapturada = onFotoCapturada)
+        SeccionEvidencia(
+            evidencias = evidencias,
+            onFotoCapturada = onFotoCapturada,
+            onEliminarFoto = onEliminarFoto
+        )
 
         Button(
             onClick = onVerHistorial,

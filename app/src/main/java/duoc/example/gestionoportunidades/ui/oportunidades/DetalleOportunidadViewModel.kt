@@ -119,6 +119,17 @@ class DetalleOportunidadViewModel(
         }
     }
 
+    fun eliminarEvidencia(evidencia: Evidencia) {
+        viewModelScope.launch {
+            try {
+                evidenciaRepository.eliminar(evidencia)
+                _mensajes.value = Mensajes(exito = "Foto eliminada")
+            } catch (e: Exception) {
+                _mensajes.value = Mensajes(error = "No se pudo eliminar la foto: ${e.localizedMessage}")
+            }
+        }
+    }
+
     fun limpiarMensajes() {
         _mensajes.value = Mensajes()
     }

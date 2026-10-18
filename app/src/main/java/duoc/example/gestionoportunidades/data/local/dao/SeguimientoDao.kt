@@ -55,4 +55,16 @@ interface SeguimientoDao {
     ORDER BY s.fechaProximo ASC
 """)
     fun obtenerUltimasGestiones(idResponsable: Long): Flow<List<AlertaSeguimiento>>
+
+    @Query("SELECT COUNT(*) FROM seguimientos WHERE idOportunidad = :idOportunidad")
+    suspend fun contarPorOportunidad(idOportunidad: Long): Int
+
+    @Query("SELECT COUNT(*) FROM seguimientos WHERE idContacto = :idContacto")
+    suspend fun contarPorContacto(idContacto: Long): Int
+
+    @Query("""
+    SELECT COUNT(*) FROM seguimientos
+    WHERE idContacto IN (SELECT idContacto FROM contactos WHERE idOrganizacion = :idOrganizacion)
+""")
+    suspend fun contarPorContactosDeOrganizacion(idOrganizacion: Long): Int
 }

@@ -56,4 +56,10 @@ interface OportunidadDao {
     ORDER BY fechaInicio ASC
 """)
     fun buscar(estado: String, prioridad: String, busqueda: String, idResponsable: Long): Flow<List<Oportunidad>>
+
+    @Query("SELECT COUNT(*) FROM oportunidades WHERE idOrganizacion = :idOrganizacion")
+    suspend fun contarPorOrganizacion(idOrganizacion: Long): Int
+
+    @Query("DELETE FROM oportunidades WHERE idOportunidad = :id")
+    suspend fun eliminarPorId(id: Long)
 }

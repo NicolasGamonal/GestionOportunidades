@@ -1,6 +1,8 @@
 package duoc.example.gestionoportunidades.ui.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -74,5 +76,46 @@ fun PantallaMensaje(texto: String, onVolver: () -> Unit) {
         Text(texto, style = MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.height(16.dp))
         OutlinedButton(onClick = onVolver) { Text("Volver") }
+    }
+}
+
+/** Acción destructiva: siempre pide confirmación antes de ejecutarse. */
+@Composable
+fun BotonEliminar(
+    texto: String,
+    titulo: String,
+    mensaje: String,
+    habilitado: Boolean,
+    onConfirmar: () -> Unit
+) {
+    var confirmando by remember { mutableStateOf(false) }
+
+    OutlinedButton(
+        onClick = { confirmando = true },
+        enabled = habilitado,
+        modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+    ) {
+        Icon(Icons.Default.Delete, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text(texto)
+    }
+
+    if (confirmando) {
+        AlertDialog(
+            onDismissRequest = { confirmando = false },
+            title = { Text(titulo) },
+            text = { Text(mensaje) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmando = false
+                        onConfirmar()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Eliminar") }
+            },
+            dismissButton = { TextButton(onClick = { confirmando = false }) { Text("Cancelar") } }
+        )
     }
 }

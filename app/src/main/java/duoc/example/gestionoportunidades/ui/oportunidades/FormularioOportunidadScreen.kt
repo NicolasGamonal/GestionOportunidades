@@ -10,10 +10,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import duoc.example.gestionoportunidades.ui.components.BotonEliminar
 import duoc.example.gestionoportunidades.ui.components.CampoDesplegable
 import duoc.example.gestionoportunidades.ui.components.CampoFecha
 import duoc.example.gestionoportunidades.ui.components.CampoFormulario
+import duoc.example.gestionoportunidades.ui.components.FormularioContenedor
 import duoc.example.gestionoportunidades.ui.components.MensajeConfirmacion
+import duoc.example.gestionoportunidades.ui.components.PantallaMensaje
 import duoc.example.gestionoportunidades.util.Catalogos
 import duoc.example.gestionoportunidades.util.Estados
 import kotlinx.coroutines.delay
@@ -22,45 +25,27 @@ import kotlinx.coroutines.delay
 fun FormularioOportunidadScreen(
     viewModel: FormularioOportunidadViewModel,
     onGuardado: () -> Unit,
+    onEliminado: () -> Unit,
     onCancelar: () -> Unit
 ) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(ui.mensajeError) {
-        ui.mensajeError?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.limpiarMensajeError()
-        }
-    }
-    LaunchedEffect(ui.guardadoExitoso) {
-        if (ui.guardadoExitoso) {
-            delay(1200)          // deja ver la confirmación antes de volver
-            onGuardado()
-        }
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
+    FormularioContenedor(
+        guardadoExitoso = ui.guardadoExitoso || ui.eliminado,
+        mensajeExito = when {
+            ui.eliminado -> "Oportunidad eliminada"
+            ui.esEdicion -> "Oportunidad actualizada"
+            else -> "Oportunidad creada"
+        },
+        mensajeError = ui.mensajeError,
+        onErrorMostrado = viewModel::limpiarMensajeError,
+        onGuardado = if (ui.eliminado) onEliminado else onGuardado
+    ) {
         when {
             ui.cargando -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-            ui.sinAcceso -> Column(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("No tienes permiso para editar esta oportunidad", style = MaterialTheme.typography.bodyLarge)
-                Spacer(Modifier.height(16.dp))
-                OutlinedButton(onClick = onCancelar) { Text("Volver") }
-            }
+            ui.sinAcceso -> PantallaMensaje("No tienes permiso para editar esta oportunidad", onCancelar)
             else -> ContenidoFormulario(ui, viewModel, onCancelar)
         }
-
-        // Por encima del contenido
-        MensajeConfirmacion(
-            visible = ui.guardadoExitoso,
-            mensaje = if (ui.esEdicion) "Oportunidad actualizada" else "Oportunidad creada"
-        )
-        SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
 }
 
@@ -175,7 +160,7 @@ private fun ContenidoFormulario(
         Spacer(Modifier.height(8.dp))
         Button(
             onClick = viewModel::guardar,
-            enabled = !ui.guardando && !ui.guardadoExitoso,
+            enabled = !ui.guardando && !ui.guardadoExitoso && !ui.eliminado,
             modifier = Modifier.fillMaxWidth()
         ) {
             if (ui.guardando) {
@@ -186,6 +171,18 @@ private fun ContenidoFormulario(
         }
         OutlinedButton(onClick = onCancelar, modifier = Modifier.fillMaxWidth()) {
             Text("Cancelar")
+        }
+        if (ui.esEdicion && ui.puedeEliminar) {
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(8.dp))
+            BotonEliminar(
+                texto = "Eliminar oportunidad",
+                titulo = "¿Eliminar oportunidad?",
+                mensaje = "Se eliminará «${ui.nombre}» de forma permanente. Esta acción no se puede deshacer.",
+                habilitado = !ui.guardando && !ui.guardadoExitoso && !ui.eliminado,
+                onConfirmar = viewModel::eliminar
+            )
         }
     }
 }

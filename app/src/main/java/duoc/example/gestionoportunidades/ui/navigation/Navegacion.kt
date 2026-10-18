@@ -185,7 +185,8 @@ fun NavegacionPrincipal() {
                 FormularioOportunidadScreen(
                     viewModel = vm,
                     onGuardado = { navController.popBackStack() },
-                    onCancelar = { navController.popBackStack() }
+                    onCancelar = { navController.popBackStack() },
+                    onEliminado = { navController.irAPestana(Ruta.Oportunidades.ruta) }
                 )
             }
 
@@ -225,7 +226,8 @@ fun NavegacionPrincipal() {
                 FormularioOrganizacionScreen(
                     viewModel = vm,
                     onGuardado = { navController.popBackStack() },
-                    onCancelar = { navController.popBackStack() }
+                    onCancelar = { navController.popBackStack() },
+                    onEliminado = { navController.irAPestana(Ruta.Organizaciones.ruta) }
                 )
             }
 
@@ -243,7 +245,8 @@ fun NavegacionPrincipal() {
                 FormularioContactoScreen (
                     viewModel = vm,
                     onGuardado = { navController.popBackStack() },
-                    onCancelar = { navController.popBackStack() }
+                    onCancelar = { navController.popBackStack() },
+                    onEliminado = { navController.popBackStack() }
                 )
             }
 

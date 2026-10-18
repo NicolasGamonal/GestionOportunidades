@@ -77,14 +77,16 @@ object AppViewModelProvider {
                 createSavedStateHandle(),
                 app().container.oportunidadRepository,
                 app().container.seguimientoRepository,
-                app().container.authRepository
+                app().container.authRepository,
+                app().container.contactoRepository
             )
         }
         initializer {
             FormularioSeguimientoViewModel(
                 createSavedStateHandle(),
                 app().container.seguimientoRepository,
-                app().container.oportunidadRepository
+                app().container.oportunidadRepository,
+                app().container.contactoRepository
             )
         }
 

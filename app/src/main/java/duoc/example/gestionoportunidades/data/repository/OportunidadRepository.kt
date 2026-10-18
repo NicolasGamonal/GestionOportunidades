@@ -96,4 +96,21 @@ class OportunidadRepository(private val db: AppDatabase) {
             )
         }
     }
+
+    suspend fun eliminar(id: Long): String? = db.withTransaction {
+        val oportunidad = oportunidadDao.obtenerPorId(id)
+            ?: return@withTransaction "La oportunidad ya no existe."
+        when {
+            oportunidad.estado != "Identificada" ->
+                "Solo se pueden eliminar oportunidades en estado Identificada. Las demás se descartan para conservar su historial."
+            seguimientoDao.contarPorOportunidad(id) > 0 ->
+                "Tiene gestiones registradas; no se puede eliminar para conservar el historial."
+            db.evidenciaDao().contarPorOportunidad(id) > 0 ->
+                "Tiene fotos de evidencia; elimínalas primero desde el detalle."
+            else -> {
+                oportunidadDao.eliminarPorId(id)
+                null
+            }
+        }
+    }
 }

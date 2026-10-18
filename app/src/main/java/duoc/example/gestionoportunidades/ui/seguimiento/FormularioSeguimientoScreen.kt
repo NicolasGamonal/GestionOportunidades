@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import duoc.example.gestionoportunidades.ui.components.*
 import duoc.example.gestionoportunidades.util.Catalogos
-
+import duoc.example.gestionoportunidades.model.Contacto
 @Composable
 fun FormularioSeguimientoScreen(
     viewModel: FormularioSeguimientoViewModel,
@@ -54,6 +54,22 @@ fun FormularioSeguimientoScreen(
                     error = ui.errores[CampoSeguimiento.TIPO],
                     onSeleccion = viewModel::onTipoChange
                 )
+                CampoDesplegable(
+                    valor = ui.contactos.firstOrNull { it.idContacto == ui.idContacto }
+                        ?.let { "${it.nombre} · ${it.cargo}" } ?: "",
+                    etiqueta = "Contacto (opcional)",
+                    opciones = listOf<Contacto?>(null) + ui.contactos,
+                    textoDe = { contacto -> contacto?.let { "${it.nombre} · ${it.cargo}" } ?: "Sin contacto" },
+                    error = null,
+                    onSeleccion = { contacto -> viewModel.onContactoChange(contacto?.idContacto) }
+                )
+                if (ui.contactos.isEmpty()) {
+                    Text(
+                        "Esta organización aún no tiene contactos. Puedes agregarlos desde Organizaciones.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 CampoFormulario(
                     valor = ui.resultado,
                     onValorChange = viewModel::onResultadoChange,

@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import duoc.example.gestionoportunidades.data.repository.AuthRepository
+import duoc.example.gestionoportunidades.data.repository.ContactoRepository
 import duoc.example.gestionoportunidades.data.repository.OportunidadRepository
 import duoc.example.gestionoportunidades.data.repository.SeguimientoRepository
 import duoc.example.gestionoportunidades.model.Seguimiento
@@ -14,7 +15,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
-data class SeguimientoItem(val seguimiento: Seguimiento, val autor: String)
+data class SeguimientoItem(
+    val seguimiento: Seguimiento,
+    val autor: String,
+    val contacto: String?          // "Nombre · Cargo", o null si la gestión no tiene contacto
+)
 
 data class HistorialUiState(
     val nombreOportunidad: String = "",
@@ -28,7 +33,8 @@ class HistorialSeguimientoViewModel(
     savedStateHandle: SavedStateHandle,
     oportunidadRepository: OportunidadRepository,
     seguimientoRepository: SeguimientoRepository,
-    authRepository: AuthRepository
+    authRepository: AuthRepository,
+    contactoRepository: ContactoRepository
 ) : ViewModel() {
 
     val idOportunidad: Long = checkNotNull(savedStateHandle.get<Long>("idOportunidad"))
@@ -48,14 +54,23 @@ class HistorialSeguimientoViewModel(
             return@combine HistorialUiState(sinAcceso = true, isLoading = false)
         }
 
-        // Nombre de quien registró cada acción (una consulta por usuario distinto)
+        // Una consulta por usuario y por contacto distinto, no una por gestión
         val autores = historial.map { it.idUsuario }.distinct().associateWith { id ->
             authRepository.obtenerUsuarioPorId(id)?.nombreCompleto ?: "Usuario"
+        }
+        val contactos = historial.mapNotNull { it.idContacto }.distinct().associateWith { id ->
+            contactoRepository.obtenerPorId(id)?.let { "${it.nombre} · ${it.cargo}" }
         }
 
         HistorialUiState(
             nombreOportunidad = oportunidad.nombre,
-            items = historial.map { SeguimientoItem(it, autores.getValue(it.idUsuario)) },
+            items = historial.map {
+                SeguimientoItem(
+                    seguimiento = it,
+                    autor = autores.getValue(it.idUsuario),
+                    contacto = it.idContacto?.let { id -> contactos[id] }
+                )
+            },
             isLoading = false
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistorialUiState())

@@ -28,4 +28,7 @@ interface OrganizacionDao {
 
     @Query("SELECT * FROM organizaciones WHERE idOrganizacion = :id")
     fun observarPorId(id: Long): Flow<Organizacion?>
+
+    @Query("DELETE FROM organizaciones WHERE idOrganizacion = :id")
+    suspend fun eliminarPorId(id: Long)
 }

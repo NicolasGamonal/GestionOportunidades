@@ -3,8 +3,10 @@ package duoc.example.gestionoportunidades.ui.seguimiento
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import duoc.example.gestionoportunidades.data.repository.ContactoRepository
 import duoc.example.gestionoportunidades.data.repository.OportunidadRepository
 import duoc.example.gestionoportunidades.data.repository.SeguimientoRepository
+import duoc.example.gestionoportunidades.model.Contacto
 import duoc.example.gestionoportunidades.model.Seguimiento
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
 import duoc.example.gestionoportunidades.util.Permisos
@@ -22,6 +24,8 @@ enum class CampoSeguimiento { TIPO, RESULTADO, PROXIMA_ACCION, FECHA_PROXIMA }
 
 data class FormularioSeguimientoUiState(
     val nombreOportunidad: String = "",
+    val contactos: List<Contacto> = emptyList(),
+    val idContacto: Long? = null,
     val tipoAccion: String = "",
     val resultado: String = "",
     val proximaAccion: String = "",
@@ -37,7 +41,8 @@ data class FormularioSeguimientoUiState(
 class FormularioSeguimientoViewModel(
     savedStateHandle: SavedStateHandle,
     private val seguimientoRepository: SeguimientoRepository,
-    oportunidadRepository: OportunidadRepository
+    oportunidadRepository: OportunidadRepository,
+    contactoRepository: ContactoRepository
 ) : ViewModel() {
 
     private val idOportunidad: Long = checkNotNull(savedStateHandle.get<Long>("idOportunidad"))
@@ -55,6 +60,10 @@ class FormularioSeguimientoViewModel(
                 _uiState.update { it.copy(cargando = false, sinAcceso = true) }
             } else {
                 _uiState.update { it.copy(cargando = false, nombreOportunidad = oportunidad.nombre) }
+                // Contactos de la organización de esta oportunidad (se actualiza si se agregan nuevos)
+                contactoRepository.obtenerPorOrganizacion(oportunidad.idOrganizacion).collect { lista ->
+                    _uiState.update { it.copy(contactos = lista) }
+                }
             }
         }
     }
@@ -69,6 +78,7 @@ class FormularioSeguimientoViewModel(
     fun onResultadoChange(v: String) = editar(CampoSeguimiento.RESULTADO) { it.copy(resultado = v) }
     fun onProximaAccionChange(v: String) = editar(CampoSeguimiento.PROXIMA_ACCION) { it.copy(proximaAccion = v) }
     fun onFechaProximaChange(v: String) = editar(CampoSeguimiento.FECHA_PROXIMA) { it.copy(fechaProximo = v) }
+    fun onContactoChange(id: Long?) = _uiState.update { it.copy(idContacto = id) }   // opcional: sin validación
     fun limpiarMensajeError() = _uiState.update { it.copy(mensajeError = null) }
 
     private fun validar(s: FormularioSeguimientoUiState): Map<CampoSeguimiento, String> {
@@ -85,7 +95,6 @@ class FormularioSeguimientoViewModel(
                     ),
             CampoSeguimiento.FECHA_PROXIMA to (
                     Validaciones.validarFecha(s.fechaProximo, "La fecha del próximo seguimiento")
-                    // la gestión se registra hoy: el próximo seguimiento no puede ser anterior
                         ?: Validaciones.validarProximoSeguimiento(hoyComoFechaCorta(), s.fechaProximo)
                     )
         )
@@ -98,7 +107,7 @@ class FormularioSeguimientoViewModel(
 
         val errores = validar(s)
         if (errores.isNotEmpty()) {
-            _uiState.update { it.copy(errores = errores) }     // los valores escritos se conservan
+            _uiState.update { it.copy(errores = errores) }
             return
         }
 
@@ -115,8 +124,8 @@ class FormularioSeguimientoViewModel(
             fechaHora = System.currentTimeMillis(),
             resultado = s.resultado.trim(),
             proximaAccion = s.proximaAccion.trim(),
-            // vence al terminar el día elegido
-            fechaProximo = s.fechaProximo.fechaCortaAMillis(LocalTime.of(23, 59))
+            fechaProximo = s.fechaProximo.fechaCortaAMillis(LocalTime.of(23, 59)),
+            idContacto = s.idContacto
         )
 
         viewModelScope.launch {

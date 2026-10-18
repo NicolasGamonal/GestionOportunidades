@@ -29,5 +29,8 @@ interface ContactoDao {
     @Query("SELECT * FROM contactos")
     fun obtenerTodos(): Flow<List<Contacto>>
 
+    @Query("DELETE FROM contactos WHERE idContacto = :id")
+    suspend fun eliminarPorId(id: Long)
+
 
 }

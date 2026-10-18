@@ -28,21 +28,21 @@ data class FormularioContactoUiState(
     val noEncontrado: Boolean = false,
     val guardando: Boolean = false,
     val guardadoExitoso: Boolean = false,
-    val mensajeError: String? = null
+    val mensajeError: String? = null,
+    val eliminado: Boolean = false
 )
 
 class FormularioContactoViewModel(
     savedStateHandle: SavedStateHandle,
     private val contactoRepository: ContactoRepository,
-    organizacionRepository: OrganizacionRepository
+    organizacionRepository: OrganizacionRepository,
 ) : ViewModel() {
 
     private val idOrganizacion: Long = checkNotNull(savedStateHandle.get<Long>("idOrganizacion"))
     private val idEdicion: Long = savedStateHandle.get<Long>("id") ?: -1L
     private var original: Contacto? = null
-
     private val _uiState = MutableStateFlow(
-        FormularioContactoUiState(esEdicion = idEdicion > 0, cargando = idEdicion > 0)
+        FormularioContactoUiState(esEdicion = idEdicion > 0, cargando = idEdicion > 0,)
     )
     val uiState: StateFlow<FormularioContactoUiState> = _uiState.asStateFlow()
 
@@ -133,5 +133,26 @@ class FormularioContactoViewModel(
                 }
             }
         }
+
     }
+    fun eliminar() {
+        val s = _uiState.value
+        if (!s.esEdicion || s.guardando || s.guardadoExitoso || s.eliminado) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(guardando = true, mensajeError = null) }
+            try {
+                val motivo = contactoRepository.eliminar(idEdicion)
+                _uiState.update {
+                    if (motivo == null) it.copy(guardando = false, eliminado = true)
+                    else it.copy(guardando = false, mensajeError = motivo)
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(guardando = false, mensajeError = "No se pudo eliminar: ${e.localizedMessage}")
+                }
+            }
+        }
+    }
+
 }

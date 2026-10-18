@@ -107,6 +107,13 @@ private fun SeguimientoCard(item: SeguimientoItem, nombreOportunidad: String) {
                 text = if (esCambioEstado) s.resultado else "Resultado: ${s.resultado}",
                 style = MaterialTheme.typography.bodyMedium
             )
+            item.contacto?.let { contacto ->
+                Text(
+                    text = "Contacto: $contacto",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             // Los cambios de estado no programan una próxima gestión
             if (!esCambioEstado) {

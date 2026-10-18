@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -17,16 +18,21 @@ import duoc.example.gestionoportunidades.util.Catalogos
 fun FormularioOrganizacionScreen(
     viewModel: FormularioOrganizacionViewModel,
     onGuardado: () -> Unit,
+    onEliminado: () -> Unit,
     onCancelar: () -> Unit
 ) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
 
     FormularioContenedor(
-        guardadoExitoso = ui.guardadoExitoso,
-        mensajeExito = if (ui.esEdicion) "Organización actualizada" else "Organización creada",
+        guardadoExitoso = ui.guardadoExitoso || ui.eliminado,
+        mensajeExito = when {
+            ui.eliminado -> "Organización eliminada"
+            ui.esEdicion -> "Organización actualizada"
+            else -> "Organización creada"
+        },
         mensajeError = ui.mensajeError,
         onErrorMostrado = viewModel::limpiarMensajeError,
-        onGuardado = onGuardado
+        onGuardado = if (ui.eliminado) onEliminado else onGuardado
     ) {
         when {
             ui.cargando -> CircularProgressIndicator(Modifier.align(Alignment.Center))
@@ -73,6 +79,19 @@ fun FormularioOrganizacionScreen(
                     onGuardar = viewModel::guardar,
                     onCancelar = onCancelar
                 )
+                if (ui.esEdicion && ui.puedeEliminar) {
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(8.dp))
+                    BotonEliminar(
+                        texto = "Eliminar organización",
+                        titulo = "¿Eliminar organización?",
+                        mensaje = "Se eliminará ${ui.nombre} y todos sus contactos de forma permanente. " +
+                                "Solo es posible si no tiene oportunidades asociadas.",
+                        habilitado = !ui.guardando && !ui.guardadoExitoso && !ui.eliminado,
+                        onConfirmar = viewModel::eliminar
+                    )
+                }
             }
         }
     }

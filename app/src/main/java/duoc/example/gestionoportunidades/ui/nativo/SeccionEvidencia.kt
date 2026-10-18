@@ -28,6 +28,7 @@ import duoc.example.gestionoportunidades.util.comoFechaHora
 fun SeccionEvidencia(
     evidencias: List<Evidencia>,
     onFotoCapturada: (String) -> Unit,
+    onEliminarFoto: (Evidencia) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -37,6 +38,7 @@ fun SeccionEvidencia(
     var permisoDenegado by remember { mutableStateOf(false) }
     var mensaje by remember { mutableStateOf<String?>(null) }
     var fotoAmpliada by remember { mutableStateOf<Evidencia?>(null) }
+    var fotoPorEliminar by remember { mutableStateOf<Evidencia?>(null) }
 
     val camaraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
@@ -150,7 +152,34 @@ fun SeccionEvidencia(
                     contentScale = ContentScale.Fit
                 )
             },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        fotoPorEliminar = evidencia
+                        fotoAmpliada = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Eliminar foto") }
+            },
             confirmButton = { TextButton(onClick = { fotoAmpliada = null }) { Text("Cerrar") } }
+        )
+    }
+
+    fotoPorEliminar?.let { evidencia ->
+        AlertDialog(
+            onDismissRequest = { fotoPorEliminar = null },
+            title = { Text("¿Eliminar esta foto?") },
+            text = { Text("Se borrará de forma permanente. Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onEliminarFoto(evidencia)
+                        fotoPorEliminar = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Eliminar") }
+            },
+            dismissButton = { TextButton(onClick = { fotoPorEliminar = null }) { Text("Cancelar") } }
         )
     }
 }

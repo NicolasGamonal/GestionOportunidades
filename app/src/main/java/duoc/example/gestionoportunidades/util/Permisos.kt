@@ -49,4 +49,11 @@ object Permisos {
     }
     /** Solo el supervisor modifica los datos de una organización (son compartidos por todo el equipo). **/
     fun puedeEditarOrganizacion(rol: String): Boolean = rol == "SUPERVISOR"
+
+    /** El ejecutivo elimina solo las suyas; el supervisor, cualquiera. (El repositorio exige además estado "Identificada" y sin historial.) */
+    fun puedeEliminarOportunidad(rol: String, idUsuario: Long, idResponsable: Long?): Boolean =
+        puedeVerOportunidad(rol, idUsuario, idResponsable)
+
+    /** Las organizaciones son datos compartidos por todo el equipo: solo el supervisor las elimina. */
+    fun puedeEliminarOrganizacion(rol: String): Boolean = rol == "SUPERVISOR"
 }

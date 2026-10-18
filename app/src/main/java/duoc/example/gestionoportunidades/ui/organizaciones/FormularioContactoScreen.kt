@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,16 +21,21 @@ import duoc.example.gestionoportunidades.util.Catalogos
 fun FormularioContactoScreen(
     viewModel: FormularioContactoViewModel,
     onGuardado: () -> Unit,
+    onEliminado: () -> Unit,
     onCancelar: () -> Unit
 ) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
 
     FormularioContenedor(
-        guardadoExitoso = ui.guardadoExitoso,
-        mensajeExito = if (ui.esEdicion) "Contacto actualizado" else "Contacto registrado",
+        guardadoExitoso = ui.guardadoExitoso || ui.eliminado,
+        mensajeExito = when {
+            ui.eliminado -> "Contacto eliminado"
+            ui.esEdicion -> "Contacto actualizado"
+            else -> "Contacto registrado"
+        },
         mensajeError = ui.mensajeError,
         onErrorMostrado = viewModel::limpiarMensajeError,
-        onGuardado = onGuardado
+        onGuardado = if (ui.eliminado) onEliminado else onGuardado
     ) {
         when {
             ui.cargando -> CircularProgressIndicator(Modifier.align(Alignment.Center))
@@ -86,11 +92,23 @@ fun FormularioContactoScreen(
                 Spacer(Modifier.height(8.dp))
                 BotonesFormulario(
                     guardando = ui.guardando,
-                    guardadoExitoso = ui.guardadoExitoso,
+                    guardadoExitoso = ui.guardadoExitoso || ui.eliminado,
                     textoGuardar = if (ui.esEdicion) "Guardar cambios" else "Registrar contacto",
                     onGuardar = viewModel::guardar,
                     onCancelar = onCancelar
                 )
+                if (ui.esEdicion) {
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(8.dp))
+                    BotonEliminar(
+                        texto = "Eliminar contacto",
+                        titulo = "¿Eliminar contacto?",
+                        mensaje = "Se eliminará a ${ui.nombre} de forma permanente. Esta acción no se puede deshacer.",
+                        habilitado = !ui.guardando && !ui.guardadoExitoso && !ui.eliminado,
+                        onConfirmar = viewModel::eliminar
+                    )
+                }
             }
         }
     }

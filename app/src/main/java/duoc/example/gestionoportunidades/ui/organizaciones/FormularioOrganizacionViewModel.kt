@@ -28,7 +28,9 @@ data class FormularioOrganizacionUiState(
     val guardando: Boolean = false,
     val guardadoExitoso: Boolean = false,
     val mensajeError: String? = null,
-    val sinPermiso: Boolean = false
+    val sinPermiso: Boolean = false,
+    val puedeEliminar: Boolean = false,
+    val eliminado: Boolean = false
 )
 
 class FormularioOrganizacionViewModel(
@@ -62,6 +64,14 @@ class FormularioOrganizacionViewModel(
                                 cargando = false,
                                 nombre = org.nombre, tipo = org.tipo,
                                 rubro = org.rubro, comuna = org.comuna
+                            )
+                        }
+                        _uiState.update {
+                            it.copy(
+                                cargando = false,
+                                nombre = org.nombre, tipo = org.tipo,
+                                rubro = org.rubro, comuna = org.comuna,
+                                puedeEliminar = Permisos.puedeEliminarOrganizacion(SesionManager.getRol())
                             )
                         }
                     }
@@ -129,6 +139,26 @@ class FormularioOrganizacionViewModel(
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(guardando = false, mensajeError = "No se pudo guardar: ${e.localizedMessage}")
+                }
+            }
+        }
+
+    }
+    fun eliminar() {
+        val s = _uiState.value
+        if (!s.esEdicion || !s.puedeEliminar || s.guardando || s.guardadoExitoso || s.eliminado) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(guardando = true, mensajeError = null) }
+            try {
+                val motivo = repository.eliminar(idEdicion)
+                _uiState.update {
+                    if (motivo == null) it.copy(guardando = false, eliminado = true)
+                    else it.copy(guardando = false, mensajeError = motivo)
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(guardando = false, mensajeError = "No se pudo eliminar: ${e.localizedMessage}")
                 }
             }
         }

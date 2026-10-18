@@ -17,4 +17,10 @@ interface EvidenciaDao {
 
     @Query("DELETE FROM evidencias WHERE idOportunidad = :idOportunidad")
     suspend fun eliminarPorOportunidad(idOportunidad: Long)
+
+    @Query("SELECT COUNT(*) FROM evidencias WHERE idOportunidad = :idOportunidad")
+    suspend fun contarPorOportunidad(idOportunidad: Long): Int
+
+    @Query("DELETE FROM evidencias WHERE idEvidencia = :idEvidencia")
+    suspend fun eliminarPorId(idEvidencia: Long)
 }

@@ -16,5 +16,5 @@ class AppContainer(context: Context) {
     val organizacionRepository = OrganizacionRepository(db)
     val contactoRepository = ContactoRepository(db)
     val seguimientoRepository = SeguimientoRepository(db)
-    val evidenciaRepository = EvidenciaRepository(db)
+    val evidenciaRepository = EvidenciaRepository(db, context.filesDir)
 }
