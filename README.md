@@ -124,4 +124,4 @@ erDiagram
     OPORTUNIDAD ||--o{ SEGUIMIENTO : "tiene"
     OPORTUNIDAD ||--o{ EVIDENCIA : "asocia"
     USUARIO ||--o{ SEGUIMIENTO : "registra"
-    CONTACTO |o--o{ SEGUIMIENTO   
+    CONTACTO |o--o{ SEGUIMIENTO : "relacionado"
