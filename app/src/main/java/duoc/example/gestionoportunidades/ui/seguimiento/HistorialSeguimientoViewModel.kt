@@ -15,10 +15,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
+// ViewModel del historial de gestiones de una oportunidad.
+// Puramente lectura: observa la oportunidad + sus seguimientos en tiempo real.
+// Resuelve los nombres de autores y contactos (FK → String) para mostrar en las tarjetas.
+
+// Un item del historial: el seguimiento + datos resueltos para mostrar
 data class SeguimientoItem(
     val seguimiento: Seguimiento,
-    val autor: String,
-    val contacto: String?          // "Nombre · Cargo", o null si la gestión no tiene contacto
+    val autor: String,           // Nombre del usuario que registró (resuelto desde FK)
+    val contacto: String?        // "Nombre · Cargo" o null si la gestión no tiene contacto
 )
 
 data class HistorialUiState(
@@ -37,16 +42,22 @@ class HistorialSeguimientoViewModel(
     contactoRepository: ContactoRepository
 ) : ViewModel() {
 
+    // id de la oportunidad (viene de la ruta)
     val idOportunidad: Long = checkNotNull(savedStateHandle.get<Long>("idOportunidad"))
 
+    // Combina 2 Flows reactivos:
+    // 1. La oportunidad (para verificar permisos y mostrar el nombre)
+    // 2. El historial de seguimientos (se actualiza al agregar una nueva gestión)
     val uiState: StateFlow<HistorialUiState> = combine(
         oportunidadRepository.observarPorId(idOportunidad),
         seguimientoRepository.obtenerHistorial(idOportunidad)
     ) { oportunidad, historial ->
+        // Oportunidad no existe
         if (oportunidad == null) {
             return@combine HistorialUiState(noEncontrada = true, isLoading = false)
         }
 
+        // Verificar permisos (el ejecutivo solo ve historial de las suyas)
         val usuario = SesionManager.usuarioActual
         if (usuario == null ||
             !Permisos.puedeVerOportunidad(usuario.rol, usuario.idUsuario, oportunidad.idResponsable)
@@ -54,14 +65,17 @@ class HistorialSeguimientoViewModel(
             return@combine HistorialUiState(sinAcceso = true, isLoading = false)
         }
 
-        // Una consulta por usuario y por contacto distinto, no una por gestión
+        // Resolver nombres de autores y contactos de forma eficiente:
+        // Una consulta por usuario DISTINTO (no una por gestión)
         val autores = historial.map { it.idUsuario }.distinct().associateWith { id ->
             authRepository.obtenerUsuarioPorId(id)?.nombreCompleto ?: "Usuario"
         }
+        // Una consulta por contacto DISTINTO
         val contactos = historial.mapNotNull { it.idContacto }.distinct().associateWith { id ->
             contactoRepository.obtenerPorId(id)?.let { "${it.nombre} · ${it.cargo}" }
         }
 
+        // Mapear cada seguimiento a un SeguimientoItem con los datos resueltos
         HistorialUiState(
             nombreOportunidad = oportunidad.nombre,
             items = historial.map {

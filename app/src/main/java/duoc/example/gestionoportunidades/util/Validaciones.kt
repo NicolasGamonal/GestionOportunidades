@@ -3,28 +3,38 @@ package duoc.example.gestionoportunidades.util
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+// Funciones puras de validación para formularios.
+// Devuelven String? (mensaje de error o null si es válido).
+// Separadas de los Composables (checklist: "Mantener la lógica de validación separada").
+// Las llaman los ViewModels en cada onXxxChange y al presionar "Guardar".
+
 object Validaciones {
 
+    // Formato de fecha usado en toda la app: "dd/MM/yyyy"
     private val formatoFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
     // --- Campos obligatorios ---
 
+    // Devuelve error si el campo está vacío o solo espacios
     fun validarObligatorio(valor: String, nombreCampo: String): String? {
         return if (valor.isBlank()) "$nombreCampo es obligatorio" else null
     }
 
     // --- Longitud ---
 
+    // Devuelve error si el texto tiene menos de `min` caracteres
     fun validarLongitudMin(valor: String, min: Int, nombreCampo: String): String? {
         return if (valor.length < min) "$nombreCampo debe tener al menos $min caracteres" else null
     }
 
+    // Devuelve error si el texto supera `max` caracteres
     fun validarLongitudMax(valor: String, max: Int, nombreCampo: String): String? {
         return if (valor.length > max) "$nombreCampo no puede superar $max caracteres" else null
     }
 
     // --- Correo ---
 
+    // Valida formato de email con regex. Devuelve null si es válido.
     fun validarCorreo(valor: String): String? {
         if (valor.isBlank()) return "El correo es obligatorio"
         val regex = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
@@ -33,6 +43,8 @@ object Validaciones {
 
     // --- Teléfono ---
 
+    // Valida formato de teléfono: opcional +, 8-15 dígitos.
+    // Permite espacios y guiones en la entrada (se eliminan antes de validar).
     fun validarTelefono(valor: String): String? {
         if (valor.isBlank()) return "El teléfono es obligatorio"
         val regex = Regex("^\\+?\\d{8,15}$")
@@ -41,6 +53,7 @@ object Validaciones {
 
     // --- Números ---
 
+    // Devuelve error si no es un número o si es negativo (0 es válido)
     fun validarNumeroNoNegativo(valor: String, nombreCampo: String): String? {
         if (valor.isBlank()) return "$nombreCampo es obligatorio"
         val num = valor.toDoubleOrNull()
@@ -51,6 +64,7 @@ object Validaciones {
         }
     }
 
+    // Devuelve error si no es un número o si es <= 0
     fun validarNumeroPositivo(valor: String, nombreCampo: String): String? {
         if (valor.isBlank()) return "$nombreCampo es obligatorio"
         val num = valor.toDoubleOrNull()
@@ -63,6 +77,7 @@ object Validaciones {
 
     // --- Fechas ---
 
+    // Valida que el string sea una fecha parseable en formato dd/MM/yyyy
     fun validarFecha(valor: String, nombreCampo: String): String? {
         if (valor.isBlank()) return "$nombreCampo es obligatorio"
         return try {
@@ -73,6 +88,8 @@ object Validaciones {
         }
     }
 
+    // Regla de negocio: fechaTermino >= fechaInicio
+    // Si alguna fecha está vacía, no se valida (la valida validarFecha por separado)
     fun validarFechaTerminoDespuesInicio(fechaInicio: String, fechaTermino: String): String? {
         if (fechaInicio.isBlank() || fechaTermino.isBlank()) return null
         return try {
@@ -85,6 +102,7 @@ object Validaciones {
         }
     }
 
+    // Regla de negocio: fechaDeteccion <= fechaInicio
     fun validarDeteccionAntesInicio(fechaDeteccion: String, fechaInicio: String): String? {
         if (fechaDeteccion.isBlank() || fechaInicio.isBlank()) return null
         return try {
@@ -97,6 +115,8 @@ object Validaciones {
         }
     }
 
+    // Regla de negocio: fechaProximo >= fecha de la gestión actual
+    // Se usa en el formulario de seguimiento: no se puede programar un seguimiento en el pasado
     fun validarProximoSeguimiento(fechaGestion: String, fechaProximo: String): String? {
         if (fechaGestion.isBlank() || fechaProximo.isBlank()) return null
         return try {

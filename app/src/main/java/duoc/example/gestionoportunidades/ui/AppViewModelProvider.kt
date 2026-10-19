@@ -19,17 +19,19 @@ import duoc.example.gestionoportunidades.ui.organizaciones.OrganizacionesViewMod
 import duoc.example.gestionoportunidades.ui.seguimiento.FormularioSeguimientoViewModel
 import duoc.example.gestionoportunidades.ui.seguimiento.HistorialSeguimientoViewModel
 
+// Factory de ViewModels: inyecta los repositorios (desde AppContainer) a cada ViewModel.
+// Se usa en Navegacion.kt como: viewModel(factory = AppViewModelProvider.Factory)
+// Sin este factory, los ViewModels no tendrían acceso a los repositorios (no se auto-inyectan).
+
 object AppViewModelProvider {
     val Factory = viewModelFactory {
         initializer { AuthViewModel(app().container.authRepository) }
-
         initializer {
             DashboardViewModel(
                 app().container.oportunidadRepository,
                 app().container.seguimientoRepository
             )
         }
-
         initializer {
             SupervisorViewModel(
                 app().container.oportunidadRepository,
@@ -37,7 +39,6 @@ object AppViewModelProvider {
             )
         }
         initializer { OportunidadesViewModel(app().container.oportunidadRepository) }
-
         initializer {
             DetalleOportunidadViewModel(
                 createSavedStateHandle(),
@@ -89,8 +90,9 @@ object AppViewModelProvider {
                 app().container.contactoRepository
             )
         }
-
     }
 }
 
+// Extrae la aplicación (GestionApp) de los CreationExtras.
+// GestionApp extiende Application y contiene el AppContainer (con todos los repositorios).
 private fun CreationExtras.app(): GestionApp = this[APPLICATION_KEY] as GestionApp
