@@ -148,7 +148,7 @@ private fun DetalleContenido(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        Text("Observaciones:", fontWeight = FontWeight.Bold)
+        Text("Observaciones", style = MaterialTheme.typography.titleSmall)
         Text(oportunidad.observaciones, style = MaterialTheme.typography.bodyLarge)
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -242,7 +242,11 @@ private fun SeccionCambioEstado(
 @Composable
 fun DetalleItem(titulo: String, valor: String) {
     Column(modifier = Modifier.padding(bottom = 4.dp)) {
-        Text(text = titulo, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = titulo,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Text(text = valor, style = MaterialTheme.typography.bodyLarge)
     }
 }

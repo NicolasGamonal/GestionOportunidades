@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import duoc.example.gestionoportunidades.model.Oportunidad
 import duoc.example.gestionoportunidades.ui.components.PanelFiltrosAnimado
 import duoc.example.gestionoportunidades.ui.components.StatusChip
+import duoc.example.gestionoportunidades.ui.components.TarjetaOportunidad
 import duoc.example.gestionoportunidades.util.comoFechaHora
 
 @Composable
@@ -75,7 +76,7 @@ fun OportunidadesScreen(viewModel: OportunidadesViewModel, onVerDetalle: (Long) 
                 )
             }
             else -> items(uiState.oportunidades, key = { it.idOportunidad }) { oportunidad ->
-                OportunidadCard(
+                TarjetaOportunidad(
                     oportunidad = oportunidad,
                     onClick = { onVerDetalle(oportunidad.idOportunidad) }
                 )
@@ -89,40 +90,5 @@ fun OportunidadesScreen(viewModel: OportunidadesViewModel, onVerDetalle: (Long) 
             text = { Text("Nueva") },
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
         )
-    }
-}
-
-@Composable
-fun OportunidadCard(oportunidad: Oportunidad, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        onClick = onClick
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = oportunidad.nombre,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f)
-                )
-                StatusChip(estado = oportunidad.estado)
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Prioridad ${oportunidad.prioridad} · ${oportunidad.comuna}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "Inicio: ${oportunidad.fechaInicio.comoFechaHora()}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import duoc.example.gestionoportunidades.model.AlertaSeguimiento
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
+import duoc.example.gestionoportunidades.ui.theme.colores
 import duoc.example.gestionoportunidades.util.comoFechaCorta
 
 @Composable
@@ -71,7 +72,7 @@ fun DashboardScreen(
                     titulo = alerta.nombreOportunidad,
                     detalle = detalleAlerta(alerta, esSupervisor, "para el"),
                     icono = Icons.Default.Schedule,
-                    colorIcono = MaterialTheme.colorScheme.primary,
+                    colorIcono = MaterialTheme.colores.advertencia,
                     onClick = { onVerOportunidad(alerta.idOportunidad) }
                 )
             }

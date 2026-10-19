@@ -16,13 +16,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import duoc.example.gestionoportunidades.ui.theme.Success // El color semántico que creamos
+import duoc.example.gestionoportunidades.ui.theme.colores
 
 @Composable
 fun MensajeConfirmacion(visible: Boolean, mensaje: String) {
-    // Segundo AnimatedVisibility requerido por la tarea J1
     AnimatedVisibility(
         visible = visible,
         enter = slideInVertically(initialOffsetY = { -40 }) + fadeIn(),
@@ -33,13 +31,13 @@ fun MensajeConfirmacion(visible: Boolean, mensaje: String) {
                 .fillMaxWidth()
                 .padding(16.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Success)
+                .background(MaterialTheme.colores.exito)
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = mensaje,
-                color = Color.White,
+                color = MaterialTheme.colores.sobreExito,
                 style = MaterialTheme.typography.bodyLarge
             )
         }

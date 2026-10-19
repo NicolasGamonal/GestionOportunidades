@@ -13,20 +13,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import duoc.example.gestionoportunidades.ui.theme.*
+import duoc.example.gestionoportunidades.ui.theme.colores
 
 @Composable
 fun StatusChip(estado: String) {
-    // Par (fondo, texto) por estado; los valores salen de ui/theme/Color.kt
-    val (fondo, texto) = when (estado) {
-        "Identificada" -> EstadoIdentificada to TextoSobreEstado
-        "Contacto realizado" -> EstadoContactoRealizado to TextoSobreEstado
-        "Propuesta enviada" -> EstadoPropuestaEnviada to TextoSobrePropuestaEnviada
-        "En espera de respuesta" -> EstadoEnEspera to TextoSobreEstado
-        "Confirmada" -> EstadoConfirmada to TextoSobreEstado
-        "Descartada" -> EstadoDescartada to TextoSobreEstado
-        else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val colorEstado = MaterialTheme.colores.paraEstado(estado)
+    val fondo = colorEstado?.fondo ?: MaterialTheme.colorScheme.surfaceVariant
+    val texto = colorEstado?.texto ?: MaterialTheme.colorScheme.onSurfaceVariant
 
     // Animación de color (J1): se anima el fondo y el texto
     val fondoAnimado by animateColorAsState(
