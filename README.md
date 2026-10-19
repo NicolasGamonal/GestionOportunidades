@@ -112,7 +112,7 @@ erDiagram
     }
 
     EVIDENCIA {
-        Long idEvidencia PK PK
+        Long idEvidencia PK 
         String rutaArchivo
         Long fecha
         Long idOportunidad FK
