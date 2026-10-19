@@ -17,15 +17,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import duoc.example.gestionoportunidades.ui.components.*
 import duoc.example.gestionoportunidades.util.Catalogos
 
+// Formulario de crear/editar un contacto.
+// Se llega desde DetalleOrganizacionScreen (botón "Agregar contacto" o editar un existente).
+// Muestra el nombre de la organización como contexto (no es editable desde aquí).
 @Composable
 fun FormularioContactoScreen(
     viewModel: FormularioContactoViewModel,
-    onGuardado: () -> Unit,
-    onEliminado: () -> Unit,
-    onCancelar: () -> Unit
+    onGuardado: () -> Unit,    // Volver al detalle de la organización
+    onEliminado: () -> Unit,   // Volver al detalle (después de eliminar)
+    onCancelar: () -> Unit     // Volver sin guardar
 ) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
 
+    // FormularioContenedor: snackbar de error + banner de éxito + retorno automático
     FormularioContenedor(
         guardadoExitoso = ui.guardadoExitoso || ui.eliminado,
         mensajeExito = when {
@@ -38,7 +42,9 @@ fun FormularioContactoScreen(
         onGuardado = if (ui.eliminado) onEliminado else onGuardado
     ) {
         when {
+            // Cargando datos (solo en modo edición)
             ui.cargando -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+            // Contacto no encontrado (se eliminó mientras se tenía abierto)
             ui.noEncontrado -> PantallaMensaje("No se encontró el contacto", onCancelar)
             else -> Column(
                 modifier = Modifier
@@ -47,6 +53,7 @@ fun FormularioContactoScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                // Contexto: muestra a qué organización pertenece el contacto
                 if (ui.nombreOrganizacion.isNotEmpty()) {
                     Text(
                         text = "Organización: ${ui.nombreOrganizacion}",
@@ -55,18 +62,24 @@ fun FormularioContactoScreen(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
+
+                // Nombre del contacto (obligatorio)
                 CampoFormulario(
                     valor = ui.nombre,
                     onValorChange = viewModel::onNombreChange,
                     etiqueta = "Nombre del contacto",
                     error = ui.errores[CampoContacto.NOMBRE]
                 )
+
+                // Cargo o función (obligatorio)
                 CampoFormulario(
                     valor = ui.cargo,
                     onValorChange = viewModel::onCargoChange,
                     etiqueta = "Cargo o función",
                     error = ui.errores[CampoContacto.CARGO]
                 )
+
+                // Área (dropdown con catálogo fijo: RRHH, Logística, Comunicaciones, etc.)
                 CampoDesplegable(
                     valor = ui.area,
                     etiqueta = "Área",
@@ -75,6 +88,8 @@ fun FormularioContactoScreen(
                     error = ui.errores[CampoContacto.AREA],
                     onSeleccion = viewModel::onAreaChange
                 )
+
+                // Correo (valida formato de email con Validaciones.kt)
                 CampoFormulario(
                     valor = ui.correo,
                     onValorChange = viewModel::onCorreoChange,
@@ -82,6 +97,8 @@ fun FormularioContactoScreen(
                     error = ui.errores[CampoContacto.CORREO],
                     keyboardType = KeyboardType.Email
                 )
+
+                // Teléfono (valida formato con Validaciones.kt)
                 CampoFormulario(
                     valor = ui.telefono,
                     onValorChange = viewModel::onTelefonoChange,
@@ -89,6 +106,8 @@ fun FormularioContactoScreen(
                     error = ui.errores[CampoContacto.TELEFONO],
                     keyboardType = KeyboardType.Phone
                 )
+
+                // Botones: guardar (con spinner) + cancelar
                 Spacer(Modifier.height(8.dp))
                 BotonesFormulario(
                     guardando = ui.guardando,
@@ -97,6 +116,8 @@ fun FormularioContactoScreen(
                     onGuardar = viewModel::guardar,
                     onCancelar = onCancelar
                 )
+
+                // Eliminar: solo en modo edición
                 if (ui.esEdicion) {
                     Spacer(Modifier.height(8.dp))
                     HorizontalDivider()

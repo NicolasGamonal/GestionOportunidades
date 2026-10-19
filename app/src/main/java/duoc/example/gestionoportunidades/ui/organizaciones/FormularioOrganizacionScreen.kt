@@ -14,12 +14,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import duoc.example.gestionoportunidades.ui.components.*
 import duoc.example.gestionoportunidades.util.Catalogos
 
+// Formulario de crear/editar organización.
+// Solo el supervisor puede editar (el ejecutivo ve "Solo el supervisor puede editar organizaciones").
+// Al eliminar, se borran también sus contactos (cascada de Room), pero solo si no tiene oportunidades.
 @Composable
 fun FormularioOrganizacionScreen(
     viewModel: FormularioOrganizacionViewModel,
-    onGuardado: () -> Unit,
-    onEliminado: () -> Unit,
-    onCancelar: () -> Unit
+    onGuardado: () -> Unit,    // Volver al detalle o a la lista
+    onEliminado: () -> Unit,   // Ir a la lista de organizaciones
+    onCancelar: () -> Unit     // Volver sin guardar
 ) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -37,6 +40,7 @@ fun FormularioOrganizacionScreen(
         when {
             ui.cargando -> CircularProgressIndicator(Modifier.align(Alignment.Center))
             ui.noEncontrada -> PantallaMensaje("No se encontró la organización", onCancelar)
+            // El ejecutivo no puede editar organizaciones (Permisos.puedeEditarOrganizacion)
             ui.sinPermiso -> PantallaMensaje("Solo el supervisor puede editar organizaciones", onCancelar)
             else -> Column(
                 modifier = Modifier
@@ -45,12 +49,14 @@ fun FormularioOrganizacionScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                // Nombre (obligatorio)
                 CampoFormulario(
                     valor = ui.nombre,
                     onValorChange = viewModel::onNombreChange,
                     etiqueta = "Nombre de la organización",
                     error = ui.errores[CampoOrganizacion.NOMBRE]
                 )
+                // Tipo (dropdown: Municipalidad, Empresa privada, Institución educativa, etc.)
                 CampoDesplegable(
                     valor = ui.tipo,
                     etiqueta = "Tipo de organización",
@@ -59,18 +65,21 @@ fun FormularioOrganizacionScreen(
                     error = ui.errores[CampoOrganizacion.TIPO],
                     onSeleccion = viewModel::onTipoChange
                 )
+                // Rubro (texto libre: Gobierno, Logística, Salud, etc.)
                 CampoFormulario(
                     valor = ui.rubro,
                     onValorChange = viewModel::onRubroChange,
                     etiqueta = "Rubro",
                     error = ui.errores[CampoOrganizacion.RUBRO]
                 )
+                // Comuna (texto libre)
                 CampoFormulario(
                     valor = ui.comuna,
                     onValorChange = viewModel::onComunaChange,
                     etiqueta = "Comuna",
                     error = ui.errores[CampoOrganizacion.COMUNA]
                 )
+
                 Spacer(Modifier.height(8.dp))
                 BotonesFormulario(
                     guardando = ui.guardando,
@@ -79,6 +88,8 @@ fun FormularioOrganizacionScreen(
                     onGuardar = viewModel::guardar,
                     onCancelar = onCancelar
                 )
+
+                // Eliminar: solo en edición + si el repo lo permite (sin oportunidades asociadas)
                 if (ui.esEdicion && ui.puedeEliminar) {
                     Spacer(Modifier.height(8.dp))
                     HorizontalDivider()

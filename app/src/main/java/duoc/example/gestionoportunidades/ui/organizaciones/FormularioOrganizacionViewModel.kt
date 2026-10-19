@@ -14,6 +14,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+// ViewModel del formulario de crear/editar organización.
+// Solo el supervisor puede editar (Permisos.puedeEditarOrganizacion).
+// idEdicion: -1 = crear, > 0 = editar.
+
 enum class CampoOrganizacion { NOMBRE, TIPO, RUBRO, COMUNA }
 
 data class FormularioOrganizacionUiState(
@@ -28,7 +32,7 @@ data class FormularioOrganizacionUiState(
     val guardando: Boolean = false,
     val guardadoExitoso: Boolean = false,
     val mensajeError: String? = null,
-    val sinPermiso: Boolean = false,
+    val sinPermiso: Boolean = false,     // true si el rol no es SUPERVISOR
     val puedeEliminar: Boolean = false,
     val eliminado: Boolean = false
 )
@@ -46,10 +50,13 @@ class FormularioOrganizacionViewModel(
     )
     val uiState: StateFlow<FormularioOrganizacionUiState> = _uiState.asStateFlow()
 
+    // ⚠️ BUG: esta propiedad no se usa. El estado real está en _uiState.sinPermiso.
+    // Se puede borrar.
     val sinPermiso: Boolean = false
 
     init {
         if (idEdicion > 0) {
+            // En edición: verificar permiso antes de cargar
             if (!Permisos.puedeEditarOrganizacion(SesionManager.getRol())) {
                 _uiState.update { it.copy(cargando = false, sinPermiso = true) }
             } else {
@@ -59,13 +66,7 @@ class FormularioOrganizacionViewModel(
                         _uiState.update { it.copy(cargando = false, noEncontrada = true) }
                     } else {
                         original = org
-                        _uiState.update {
-                            it.copy(
-                                cargando = false,
-                                nombre = org.nombre, tipo = org.tipo,
-                                rubro = org.rubro, comuna = org.comuna
-                            )
-                        }
+                        // Pre-llena los campos + calcula si se puede eliminar
                         _uiState.update {
                             it.copy(
                                 cargando = false,
@@ -80,6 +81,7 @@ class FormularioOrganizacionViewModel(
         }
     }
 
+    // Actualiza un campo y limpia su error
     private fun editar(campo: CampoOrganizacion, cambio: (FormularioOrganizacionUiState) -> FormularioOrganizacionUiState) =
         _uiState.update { actual ->
             val nuevo = cambio(actual)
@@ -92,6 +94,7 @@ class FormularioOrganizacionViewModel(
     fun onComunaChange(v: String) = editar(CampoOrganizacion.COMUNA) { it.copy(comuna = v) }
     fun limpiarMensajeError() = _uiState.update { it.copy(mensajeError = null) }
 
+    // Valida los 4 campos con Validaciones.kt
     private fun validar(s: FormularioOrganizacionUiState): Map<CampoOrganizacion, String> {
         val resultados = listOf<Pair<CampoOrganizacion, String?>>(
             CampoOrganizacion.NOMBRE to (
@@ -112,13 +115,14 @@ class FormularioOrganizacionViewModel(
         return resultados.mapNotNull { (campo, error) -> error?.let { campo to it } }.toMap()
     }
 
+    // Valida y guarda en Room
     fun guardar() {
         val s = _uiState.value
         if (s.guardando || s.guardadoExitoso) return
 
         val errores = validar(s)
         if (errores.isNotEmpty()) {
-            _uiState.update { it.copy(errores = errores) }   // los valores escritos se conservan
+            _uiState.update { it.copy(errores = errores) }
             return
         }
 
@@ -142,8 +146,9 @@ class FormularioOrganizacionViewModel(
                 }
             }
         }
-
     }
+
+    // Elimina (el repositorio verifica que no tenga oportunidades ni historial en contactos)
     fun eliminar() {
         val s = _uiState.value
         if (!s.esEdicion || !s.puedeEliminar || s.guardando || s.guardadoExitoso || s.eliminado) return
