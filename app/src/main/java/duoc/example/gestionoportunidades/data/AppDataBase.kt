@@ -96,13 +96,13 @@ abstract class AppDatabase : RoomDatabase() {
 
             // --- ORGANIZACIONES ---
             db.organizacionDao().insertarOrganizacion(
-                Organizacion(idOrganizacion = 1, nombre = "Municipalidad de Providencia", tipo = "Municipalidad", rubro = "Gobierno", comuna = "Providencia")
+                Organizacion(idOrganizacion = 1, nombre = "Municipalidad de Valle Verde", tipo = "Municipalidad", rubro = "Gobierno", comuna = "Providencia")
             )
             db.organizacionDao().insertarOrganizacion(
                 Organizacion(idOrganizacion = 2, nombre = "Empresa Logística Andina SpA", tipo = "Empresa privada", rubro = "Logística", comuna = "Maipú")
             )
             db.organizacionDao().insertarOrganizacion(
-                Organizacion(idOrganizacion = 3, nombre = "Colegio San Miguel Arcángel", tipo = "Institución educativa", rubro = "Educación", comuna = "Las Condes")
+                Organizacion(idOrganizacion = 3, nombre = "Colegio Los Aromos", tipo = "Institución educativa", rubro = "Educación", comuna = "Las Condes")
             )
             db.organizacionDao().insertarOrganizacion(
                 Organizacion(idOrganizacion = 4, nombre = "Clínica Dental Sonrisa", tipo = "Empresa privada", rubro = "Salud", comuna = "Ñuñoa")
@@ -110,13 +110,13 @@ abstract class AppDatabase : RoomDatabase() {
 
             // --- CONTACTOS ---
             db.contactoDao().insertarContacto(
-                Contacto(idContacto = 1, nombre = "Ana Rojas", cargo = "Directora de Eventos", area = "Comunicaciones", correo = "ana.rojas@muniprov.cl", telefono = "+56912345678", idOrganizacion = 1)
+                Contacto(idContacto = 1, nombre = "Ana Rojas", cargo = "Directora de Eventos", area = "Comunicaciones", correo = "ana.rojas@munivv.cl", telefono = "+56912345678", idOrganizacion = 1)
             )
             db.contactoDao().insertarContacto(
                 Contacto(idContacto = 2, nombre = "Pedro Fuentes", cargo = "Gerente RRHH", area = "Recursos Humanos", correo = "pedro.fuentes@logandina.cl", telefono = "+56987654321", idOrganizacion = 2)
             )
             db.contactoDao().insertarContacto(
-                Contacto(idContacto = 3, nombre = "Lucía Vargas", cargo = "Jefa de Administración", area = "Administración", correo = "lucia.vargas@colegiosanmiguel.cl", telefono = "+56955551234", idOrganizacion = 3)
+                Contacto(idContacto = 3, nombre = "Lucía Vargas", cargo = "Jefa de Administración", area = "Administración", correo = "lucia.vargas@colegioaromos.cl", telefono = "+56955551234", idOrganizacion = 3)
             )
             db.contactoDao().insertarContacto(
                 Contacto(idContacto = 4, nombre = "Roberto Díaz", cargo = "Director Comercial", area = "Comercial", correo = "roberto.diaz@clinicasonrisa.cl", telefono = "+56944445678", idOrganizacion = 4)
@@ -126,7 +126,7 @@ abstract class AppDatabase : RoomDatabase() {
             db.oportunidadDao().insertarOportunidad(
                 Oportunidad(
                     idOportunidad = 1,
-                    nombre = "Feria del Emprendedor Providencia",
+                    nombre = "Feria del Emprendedor Valle Verde",
                     tipoEvento = "Feria municipal",
                     fechaDeteccion = hoy - 3 * dia,
                     fechaInicio = hoy + 7 * dia,
@@ -162,7 +162,7 @@ abstract class AppDatabase : RoomDatabase() {
             db.oportunidadDao().insertarOportunidad(
                 Oportunidad(
                     idOportunidad = 3,
-                    nombre = "Feria Institucional San Miguel",
+                    nombre = "Feria Institucional Los Aromos",
                     tipoEvento = "Feria institucional",
                     fechaDeteccion = hoy - 3 * dia,
                     fechaInicio = hoy + 30 * dia,
@@ -216,7 +216,7 @@ abstract class AppDatabase : RoomDatabase() {
             db.oportunidadDao().insertarOportunidad(
                 Oportunidad(
                     idOportunidad = 6,
-                    nombre = "Jornada Municipal Providencia",
+                    nombre = "Jornada Municipal Valle Verde",
                     tipoEvento = "Actividad municipal",
                     fechaDeteccion = hoy - 3 * dia,
                     fechaInicio = hoy + 30 * dia,

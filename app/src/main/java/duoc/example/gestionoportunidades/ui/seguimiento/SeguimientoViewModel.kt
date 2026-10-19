@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-// 1. Definimos el Estado de la Interfaz (UiState)[cite: 4]
+// 1. Definimos el Estado de la Interfaz (UiState)
 data class SeguimientoUiState(
     val seguimientos: List<Seguimiento> = emptyList(),
     val estaCargando: Boolean = false,
@@ -21,7 +21,7 @@ class SeguimientoViewModel : ViewModel() {
 
     // Estado interno modificable
     private val _uiState = MutableStateFlow(SeguimientoUiState())
-    // Estado público de solo lectura para la vista (Compose)[cite: 4]
+    // Estado público de solo lectura para la vista (Compose)
     val uiState: StateFlow<SeguimientoUiState> = _uiState.asStateFlow()
 
     init {

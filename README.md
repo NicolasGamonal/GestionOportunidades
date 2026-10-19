@@ -112,7 +112,7 @@ erDiagram
     }
 
     EVIDENCIA {
-        Long id PK
+        Long idEvidencia PK PK
         String rutaArchivo
         Long fecha
         Long idOportunidad FK
@@ -123,4 +123,5 @@ erDiagram
     ORGANIZACION ||--o{ CONTACTO : "posee"
     OPORTUNIDAD ||--o{ SEGUIMIENTO : "tiene"
     OPORTUNIDAD ||--o{ EVIDENCIA : "asocia"
-    USUARIO ||--o{ SEGUIMIENTO : "registra"   
+    USUARIO ||--o{ SEGUIMIENTO : "registra"
+    CONTACTO |o--o{ SEGUIMIENTO   
