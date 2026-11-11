@@ -2,6 +2,7 @@ package duoc.example.gestionoportunidades.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import duoc.example.gestionoportunidades.util.Validaciones
 import duoc.example.gestionoportunidades.data.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,8 +49,9 @@ class AuthViewModel(
     fun intentarLogin(username: String, contrasena: String) {
         // Validación básica: si algún campo está vacío, no se consulta Room.
         // Se muestra el mensaje de error directamente (sin coroutine).
-        if (username.isBlank() || contrasena.isBlank()) {
-            _uiState.update { it.copy(errorMensaje = "Por favor, completa todos los campos") }
+        val errorValidacion = Validaciones.validarCredenciales(username, contrasena)
+        if (errorValidacion != null) {
+            _uiState.update { it.copy(errorMensaje = errorValidacion) }
             return  // No se continúa: se sale de la función
         }
 

@@ -10,9 +10,9 @@ import duoc.example.gestionoportunidades.model.Contacto
 import duoc.example.gestionoportunidades.model.Seguimiento
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
 import duoc.example.gestionoportunidades.util.Permisos
-import duoc.example.gestionoportunidades.util.Validaciones
+import duoc.example.gestionoportunidades.util.CampoSeguimiento
+import duoc.example.gestionoportunidades.util.ValidacionesFormularios
 import duoc.example.gestionoportunidades.util.fechaCortaAMillis
-import duoc.example.gestionoportunidades.util.hoyComoFechaCorta
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,9 +23,6 @@ import java.time.LocalTime
 // ViewModel del formulario de nueva gestión.
 // Solo crea (no edita ni elimina: el historial es inmutable).
 // Verifica que el usuario pueda ver la oportunidad antes de permitir registrar.
-
-enum class CampoSeguimiento { TIPO, RESULTADO, PROXIMA_ACCION, FECHA_PROXIMA }
-
 data class FormularioSeguimientoUiState(
     val nombreOportunidad: String = "",       // Contexto: a qué oportunidad se asocia
     val contactos: List<Contacto> = emptyList(), // Contactos de la org (para el dropdown opcional)
@@ -89,34 +86,17 @@ class FormularioSeguimientoViewModel(
     fun onContactoChange(id: Long?) = _uiState.update { it.copy(idContacto = id) }
     fun limpiarMensajeError() = _uiState.update { it.copy(mensajeError = null) }
 
-    // Valida los 4 campos obligatorios
-    private fun validar(s: FormularioSeguimientoUiState): Map<CampoSeguimiento, String> {
-        val resultados = listOf<Pair<CampoSeguimiento, String?>>(
-            CampoSeguimiento.TIPO to Validaciones.validarObligatorio(s.tipoAccion, "El tipo de acción"),
-            CampoSeguimiento.RESULTADO to (
-                    Validaciones.validarObligatorio(s.resultado, "El resultado")
-                        ?: Validaciones.validarLongitudMin(s.resultado.trim(), 5, "El resultado")
-                        ?: Validaciones.validarLongitudMax(s.resultado, 300, "El resultado")
-                    ),
-            CampoSeguimiento.PROXIMA_ACCION to (
-                    Validaciones.validarObligatorio(s.proximaAccion, "La próxima acción")
-                        ?: Validaciones.validarLongitudMax(s.proximaAccion, 120, "La próxima acción")
-                    ),
-            // Fecha debe ser válida Y >= hoy (no se puede programar un seguimiento en el pasado)
-            CampoSeguimiento.FECHA_PROXIMA to (
-                    Validaciones.validarFecha(s.fechaProximo, "La fecha del próximo seguimiento")
-                        ?: Validaciones.validarProximoSeguimiento(hoyComoFechaCorta(), s.fechaProximo)
-                    )
-        )
-        return resultados.mapNotNull { (campo, error) -> error?.let { campo to it } }.toMap()
-    }
-
     // Valida y guarda en Room
     fun guardar() {
         val s = _uiState.value
         if (s.guardando || s.guardadoExitoso) return
 
-        val errores = validar(s)
+        val errores = ValidacionesFormularios.validarSeguimiento(
+            tipoAccion = s.tipoAccion,
+            resultado = s.resultado,
+            proximaAccion = s.proximaAccion,
+            fechaProximo = s.fechaProximo
+        )
         if (errores.isNotEmpty()) {
             _uiState.update { it.copy(errores = errores) }
             return

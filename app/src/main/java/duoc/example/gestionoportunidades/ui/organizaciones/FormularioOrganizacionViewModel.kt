@@ -7,19 +7,16 @@ import duoc.example.gestionoportunidades.data.repository.OrganizacionRepository
 import duoc.example.gestionoportunidades.model.Organizacion
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
 import duoc.example.gestionoportunidades.util.Permisos
-import duoc.example.gestionoportunidades.util.Validaciones
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import duoc.example.gestionoportunidades.util.CampoOrganizacion
 
 // ViewModel del formulario de crear/editar organización.
 // Solo el supervisor puede editar (Permisos.puedeEditarOrganizacion).
 // idEdicion: -1 = crear, > 0 = editar.
-
-enum class CampoOrganizacion { NOMBRE, TIPO, RUBRO, COMUNA }
-
 data class FormularioOrganizacionUiState(
     val nombre: String = "",
     val tipo: String = "",
@@ -94,33 +91,14 @@ class FormularioOrganizacionViewModel(
     fun onComunaChange(v: String) = editar(CampoOrganizacion.COMUNA) { it.copy(comuna = v) }
     fun limpiarMensajeError() = _uiState.update { it.copy(mensajeError = null) }
 
-    // Valida los 4 campos con Validaciones.kt
-    private fun validar(s: FormularioOrganizacionUiState): Map<CampoOrganizacion, String> {
-        val resultados = listOf<Pair<CampoOrganizacion, String?>>(
-            CampoOrganizacion.NOMBRE to (
-                    Validaciones.validarObligatorio(s.nombre, "El nombre")
-                        ?: Validaciones.validarLongitudMin(s.nombre.trim(), 3, "El nombre")
-                        ?: Validaciones.validarLongitudMax(s.nombre, 80, "El nombre")
-                    ),
-            CampoOrganizacion.TIPO to Validaciones.validarObligatorio(s.tipo, "El tipo de organización"),
-            CampoOrganizacion.RUBRO to (
-                    Validaciones.validarObligatorio(s.rubro, "El rubro")
-                        ?: Validaciones.validarLongitudMax(s.rubro, 50, "El rubro")
-                    ),
-            CampoOrganizacion.COMUNA to (
-                    Validaciones.validarObligatorio(s.comuna, "La comuna")
-                        ?: Validaciones.validarLongitudMax(s.comuna, 40, "La comuna")
-                    )
-        )
-        return resultados.mapNotNull { (campo, error) -> error?.let { campo to it } }.toMap()
-    }
-
     // Valida y guarda en Room
     fun guardar() {
         val s = _uiState.value
         if (s.guardando || s.guardadoExitoso) return
 
-        val errores = validar(s)
+        val errores = ValidacionesFormularios.validarOrganizacion(
+            nombre = s.nombre, tipo = s.tipo, rubro = s.rubro, comuna = s.comuna
+        )
         if (errores.isNotEmpty()) {
             _uiState.update { it.copy(errores = errores) }
             return

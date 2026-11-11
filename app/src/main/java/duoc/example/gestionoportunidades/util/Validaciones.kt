@@ -20,6 +20,16 @@ object Validaciones {
         return if (valor.isBlank()) "$nombreCampo es obligatorio" else null
     }
 
+    // Devuelve error si no se eligió nada en un dropdown (valor null)
+    fun validarSeleccion(valor: Any?, mensaje: String): String? {
+        return if (valor == null) mensaje else null
+    }
+
+    // Login: usuario y contraseña no pueden venir vacíos (antes de consultar Room)
+    fun validarCredenciales(username: String, contrasena: String): String? {
+        return if (username.isBlank() || contrasena.isBlank()) "Por favor, completa todos los campos" else null
+    }
+
     // --- Longitud ---
 
     // Devuelve error si el texto tiene menos de `min` caracteres
@@ -128,4 +138,16 @@ object Validaciones {
             null
         }
     }
-}   
+    // --- Filtros de entrada (limpian lo que escribe el usuario, en cada tecla) ---
+
+    // Deja solo dígitos y corta a `maxLargo` caracteres (público esperado, costo)
+    fun filtrarSoloDigitos(valor: String, maxLargo: Int): String =
+        valor.filter(Char::isDigit).take(maxLargo)
+
+    // El correo no admite espacios
+    fun filtrarCorreo(valor: String): String = valor.replace(" ", "")
+
+    // Teléfono: solo dígitos, + y espacios. Máx 16 caracteres.
+    fun filtrarTelefono(valor: String): String =
+        valor.filter { it.isDigit() || it == '+' || it == ' ' }.take(16)
+}

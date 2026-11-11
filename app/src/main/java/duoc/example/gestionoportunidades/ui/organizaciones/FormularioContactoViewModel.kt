@@ -12,13 +12,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import duoc.example.gestionoportunidades.util.CampoContacto
+import duoc.example.gestionoportunidades.util.ValidacionesFormularios
 
 // ViewModel del formulario de crear/editar contacto.
 // idOrganizacion: a qué org pertenece (viene de la ruta, obligatorio).
 // idEdicion: -1 = crear, > 0 = editar.
 
-// Identifica cada campo para el mapa de errores
-enum class CampoContacto { NOMBRE, CARGO, AREA, CORREO, TELEFONO }
 
 // Estado del formulario: 5 campos + errores + estados de pantalla
 data class FormularioContactoUiState(
@@ -93,39 +93,23 @@ class FormularioContactoViewModel(
     fun onNombreChange(v: String) = editar(CampoContacto.NOMBRE) { it.copy(nombre = v) }
     fun onCargoChange(v: String) = editar(CampoContacto.CARGO) { it.copy(cargo = v) }
     fun onAreaChange(v: String) = editar(CampoContacto.AREA) { it.copy(area = v) }
-    // Correo: elimina espacios (no son válidos en un email)
-    fun onCorreoChange(v: String) = editar(CampoContacto.CORREO) { it.copy(correo = v.replace(" ", "")) }
-    // Teléfono: solo dígitos, + y espacios. Máx 16 caracteres.
+    // Correo y teléfono: la limpieza de lo escrito la define Validaciones.kt
+    fun onCorreoChange(v: String) = editar(CampoContacto.CORREO) { it.copy(correo = Validaciones.filtrarCorreo(v)) }
     fun onTelefonoChange(v: String) =
-        editar(CampoContacto.TELEFONO) { it.copy(telefono = v.filter { c -> c.isDigit() || c == '+' || c == ' ' }.take(16)) }
+        editar(CampoContacto.TELEFONO) { it.copy(telefono = Validaciones.filtrarTelefono(v)) }
 
     fun limpiarMensajeError() = _uiState.update { it.copy(mensajeError = null) }
 
-    // Valida los 5 campos con Validaciones.kt
-    private fun validar(s: FormularioContactoUiState): Map<CampoContacto, String> {
-        val resultados = listOf<Pair<CampoContacto, String?>>(
-            CampoContacto.NOMBRE to (
-                    Validaciones.validarObligatorio(s.nombre, "El nombre")
-                        ?: Validaciones.validarLongitudMin(s.nombre.trim(), 3, "El nombre")
-                        ?: Validaciones.validarLongitudMax(s.nombre, 60, "El nombre")
-                    ),
-            CampoContacto.CARGO to (
-                    Validaciones.validarObligatorio(s.cargo, "El cargo")
-                        ?: Validaciones.validarLongitudMax(s.cargo, 60, "El cargo")
-                    ),
-            CampoContacto.AREA to Validaciones.validarObligatorio(s.area, "El área"),
-            CampoContacto.CORREO to Validaciones.validarCorreo(s.correo.trim()),
-            CampoContacto.TELEFONO to Validaciones.validarTelefono(s.telefono.trim())
-        )
-        return resultados.mapNotNull { (campo, error) -> error?.let { campo to it } }.toMap()
-    }
 
     // Valida y guarda en Room (insertar o actualizar)
     fun guardar() {
         val s = _uiState.value
         if (s.guardando || s.guardadoExitoso) return
 
-        val errores = validar(s)
+        val errores = ValidacionesFormularios.validarContacto(
+            nombre = s.nombre, cargo = s.cargo, area = s.area,
+            correo = s.correo, telefono = s.telefono
+        )
         if (errores.isNotEmpty()) {
             _uiState.update { it.copy(errores = errores) }
             return

@@ -15,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import duoc.example.gestionoportunidades.ui.components.*
 import duoc.example.gestionoportunidades.util.Catalogos
 import duoc.example.gestionoportunidades.model.Contacto
+import duoc.example.gestionoportunidades.util.CampoSeguimiento
 
 // Formulario de registrar una nueva gestión (llamada, email, reunión).
 // Se llega desde HistorialSeguimientoScreen (botón "Nueva gestión").

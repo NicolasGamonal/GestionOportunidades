@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import duoc.example.gestionoportunidades.ui.components.*
 import duoc.example.gestionoportunidades.util.Catalogos
+import duoc.example.gestionoportunidades.util.CampoOrganizacion
 
 // Formulario de crear/editar organización.
 // Solo el supervisor puede editar (el ejecutivo ve "Solo el supervisor puede editar organizaciones").

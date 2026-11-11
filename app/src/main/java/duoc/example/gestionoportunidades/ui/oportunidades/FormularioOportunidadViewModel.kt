@@ -8,8 +8,10 @@ import duoc.example.gestionoportunidades.data.repository.OrganizacionRepository
 import duoc.example.gestionoportunidades.model.Oportunidad
 import duoc.example.gestionoportunidades.model.Organizacion
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
+import duoc.example.gestionoportunidades.util.CampoOportunidad
 import duoc.example.gestionoportunidades.util.Permisos
 import duoc.example.gestionoportunidades.util.Validaciones
+import duoc.example.gestionoportunidades.util.ValidacionesFormularios
 import duoc.example.gestionoportunidades.util.comoFechaCorta
 import duoc.example.gestionoportunidades.util.fechaCortaAMillis
 import duoc.example.gestionoportunidades.util.hoyComoFechaCorta
@@ -37,7 +39,8 @@ import java.time.LocalTime
 // Patrón MVVM:
 // - Recibe 2 repositorios por inyección (desde AppViewModelProvider.Factory → AppContainer).
 // - Expone un único StateFlow<FormularioUiState> que la Screen observa.
-// - No conoce Composables: la validación usa Validaciones.kt (util/), separado de los Composables (checklist).
+// - No conoce Composables ni contiene reglas de validación: todas viven en util/ (Validaciones.kt y
+//   ValidacionesFormularios.kt); el ViewModel solo las llama y guarda el resultado en el estado.
 //
 // ¿Por qué los campos numéricos (publicoEsperado, costoReferencial) son String en el UiState?
 // Porque el campo de texto del formulario trabaja con String. Si se guardaran como Int/Double
@@ -49,13 +52,6 @@ import java.time.LocalTime
 // Porque la ruta tiene un argumento "id" (default = -1).
 // - id = -1 → modo CREAR (campos vacíos, fechaDeteccion = hoy)
 // - id > 0 → modo EDITAR (carga los datos de Room)
-
-// Enum: identifica cada campo del formulario para el mapa de errores.
-// Se usa como clave en FormularioUiState.errores: Map<CampoOportunidad, String>.
-// Ventaja sobre usar Strings ("nombre", "tipo", ...): el compilador detecta typos.
-enum class CampoOportunidad {
-    NOMBRE, TIPO, ORGANIZACION, DETECCION, INICIO, TERMINO, COMUNA, PUBLICO, COSTO, OBSERVACIONES
-}
 
 // Estado completo del formulario que la Screen observa.
 //
@@ -264,11 +260,11 @@ class FormularioOportunidadViewModel(
     // Comuna: texto libre
     fun onComunaChange(v: String) = editar(CampoOportunidad.COMUNA) { it.copy(comuna = v) }
 
-    // Público esperado: solo acepta dígitos (filter) y máx 7 caracteres (take).
+    // Público esperado: solo acepta dígitos y máx 7 caracteres (filtro en Validaciones.kt).
     // Esto evita que el usuario escriba letras o números absurdos (> 10 millones).
-    // La validación completa (debe ser > 0) la hace validar() al guardar.
+    // La validación completa (debe ser > 0) la hace ValidacionesFormularios.validarOportunidad() al guardar.
     fun onPublicoChange(v: String) =
-        editar(CampoOportunidad.PUBLICO) { it.copy(publicoEsperado = v.filter(Char::isDigit).take(7)) }
+        editar(CampoOportunidad.PUBLICO) { it.copy(publicoEsperado = Validaciones.filtrarSoloDigitos(v, 7)) }
 
     // Prioridad: no tiene campo de error propio (siempre hay una seleccionada, default "Media").
     // Por eso campo = null (no limpia nada).
@@ -277,7 +273,7 @@ class FormularioOportunidadViewModel(
     // Costo referencial: solo acepta dígitos y máx 10 caracteres (~$2.1 billones CLP).
     // Evita que se escriban puntos decimales (el costo se maneja como entero en la UI).
     fun onCostoChange(v: String) =
-        editar(CampoOportunidad.COSTO) { it.copy(costoReferencial = v.filter(Char::isDigit).take(10)) }
+        editar(CampoOportunidad.COSTO) { it.copy(costoReferencial = Validaciones.filtrarSoloDigitos(v, 10)) }
 
     // Observaciones: texto libre (multilinea)
     fun onObservacionesChange(v: String) =
@@ -286,69 +282,6 @@ class FormularioOportunidadViewModel(
     // Limpia el mensaje de error general (lo pone a null).
     // Se llama desde FormularioContenedor después de mostrar el Snackbar.
     fun limpiarMensajeError() = _uiState.update { it.copy(mensajeError = null) }
-
-    // --- VALIDACIÓN (usa util/Validaciones.kt, separado de los Composables) ---
-
-    // Valida TODOS los campos y devuelve un mapa de errores (solo los que fallan).
-    // Si el mapa está vacío → todos los campos son válidos → se puede guardar.
-    //
-    // ¿Por qué un solo mapa y no validar campo por campo?
-    // Porque al presionar "Guardar", se quiere marcar TODOS los errores a la vez
-    // (el usuario ve de un vistazo qué campos corregir). Si se validara uno por uno,
-    // tendría que presionar "Guardar" varias veces.
-    //
-    // Orden de validación por campo (se evalúan en secuencia, el primero que falla "gana"):
-    // - NOMBRE: obligatorio → longitud mínima 3 → longitud máxima 80
-    // - TIPO: obligatorio
-    // - ORGANIZACION: debe estar seleccionada (idOrganizacion != null)
-    // - DETECCION: fecha válida → debe ser ≤ fechaInicio
-    // - INICIO: fecha válida
-    // - TERMINO: fecha válida → debe ser ≥ fechaInicio
-    // - COMUNA: obligatorio → longitud máxima 40
-    // - PUBLICO: número positivo (> 0)
-    // - COSTO: número no negativo (≥ 0)
-    // - OBSERVACIONES: longitud máxima 500 (opcional: si está vacío, no falla)
-    private fun validar(s: FormularioUiState): Map<CampoOportunidad, String> {
-        // Lista de pares (campo, error o null). null = válido.
-        val resultados = listOf<Pair<CampoOportunidad, String?>>(
-            // NOMBRE: 3 validaciones en cadena (?: = "si es null, prueba la siguiente")
-            CampoOportunidad.NOMBRE to (
-                    Validaciones.validarObligatorio(s.nombre, "El nombre")
-                        ?: Validaciones.validarLongitudMin(s.nombre.trim(), 3, "El nombre")
-                        ?: Validaciones.validarLongitudMax(s.nombre, 80, "El nombre")
-                    ),
-            // TIPO: solo obligatorio (viene de un dropdown, siempre tiene formato válido)
-            CampoOportunidad.TIPO to Validaciones.validarObligatorio(s.tipoEvento, "El tipo de evento"),
-            // ORGANIZACION: debe haber seleccionado una (idOrganizacion no puede ser null)
-            CampoOportunidad.ORGANIZACION to
-                    if (s.idOrganizacion == null) "Selecciona una organización" else null,
-            // DETECCION: fecha válida + regla de negocio (detección ≤ inicio)
-            CampoOportunidad.DETECCION to (
-                    Validaciones.validarFecha(s.fechaDeteccion, "La fecha de detección")
-                        ?: Validaciones.validarDeteccionAntesInicio(s.fechaDeteccion, s.fechaInicio)
-                    ),
-            // INICIO: solo fecha válida (la regla con término se valida en TERMINO)
-            CampoOportunidad.INICIO to Validaciones.validarFecha(s.fechaInicio, "La fecha de inicio"),
-            // TERMINO: fecha válida + regla de negocio (término ≥ inicio)
-            CampoOportunidad.TERMINO to (
-                    Validaciones.validarFecha(s.fechaTermino, "La fecha de término")
-                        ?: Validaciones.validarFechaTerminoDespuesInicio(s.fechaInicio, s.fechaTermino)
-                    ),
-            // COMUNA: obligatorio + longitud máxima
-            CampoOportunidad.COMUNA to (
-                    Validaciones.validarObligatorio(s.comuna, "La comuna")
-                        ?: Validaciones.validarLongitudMax(s.comuna, 40, "La comuna")
-                    ),
-            // PUBLICO: debe ser un número > 0 (validarNumeroPositivo devuelve null si es válido)
-            CampoOportunidad.PUBLICO to Validaciones.validarNumeroPositivo(s.publicoEsperado, "El público esperado"),
-            // COSTO: debe ser un número ≥ 0 (puede ser 0 si se descarta)
-            CampoOportunidad.COSTO to Validaciones.validarNumeroNoNegativo(s.costoReferencial, "El costo referencial"),
-            // OBSERVACIONES: opcional (si está vacío, validarLongitudMax no falla), máx 500
-            CampoOportunidad.OBSERVACIONES to Validaciones.validarLongitudMax(s.observaciones, 500, "Las observaciones")
-        )
-        // Filtra los null (válidos) y convierte a Map (solo los que tienen error)
-        return resultados.mapNotNull { (campo, error) -> error?.let { campo to it } }.toMap()
-    }
 
     // --- CONVERSIÓN DE FECHAS ---
 
@@ -381,8 +314,20 @@ class FormularioOportunidadViewModel(
         if (s.guardando || s.guardadoExitoso) return
 
         // Validación completa: si hay errores, se marcan en la UI y se sale.
+        // Las reglas viven en ValidacionesFormularios.kt (util/), no en el ViewModel.
         // Los valores NO se borran (están en el UiState, no en remember local).
-        val errores = validar(s)
+        val errores = ValidacionesFormularios.validarOportunidad(
+            nombre = s.nombre,
+            tipoEvento = s.tipoEvento,
+            idOrganizacion = s.idOrganizacion,
+            fechaDeteccion = s.fechaDeteccion,
+            fechaInicio = s.fechaInicio,
+            fechaTermino = s.fechaTermino,
+            comuna = s.comuna,
+            publicoEsperado = s.publicoEsperado,
+            costoReferencial = s.costoReferencial,
+            observaciones = s.observaciones
+        )
         if (errores.isNotEmpty()) {
             // Se marcan los errores y se conservan todos los valores escritos
             _uiState.update { it.copy(errores = errores) }

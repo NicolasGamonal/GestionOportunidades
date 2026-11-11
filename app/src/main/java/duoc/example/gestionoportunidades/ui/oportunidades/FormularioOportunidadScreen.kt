@@ -20,6 +20,7 @@ import duoc.example.gestionoportunidades.ui.components.PantallaMensaje
 import duoc.example.gestionoportunidades.util.Catalogos
 import duoc.example.gestionoportunidades.util.Estados
 import kotlinx.coroutines.delay
+import duoc.example.gestionoportunidades.util.CampoOportunidad
 
 // FormularioOportunidadScreen: pantalla para crear o editar una oportunidad.
 //

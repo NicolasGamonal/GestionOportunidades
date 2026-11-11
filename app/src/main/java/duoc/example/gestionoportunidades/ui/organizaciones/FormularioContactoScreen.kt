@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import duoc.example.gestionoportunidades.ui.components.*
 import duoc.example.gestionoportunidades.util.Catalogos
+import duoc.example.gestionoportunidades.util.CampoContacto
 
 // Formulario de crear/editar un contacto.
 // Se llega desde DetalleOrganizacionScreen (botón "Agregar contacto" o editar un existente).
