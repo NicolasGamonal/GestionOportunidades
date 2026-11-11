@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.ContactPhone
+import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -20,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import duoc.example.gestionoportunidades.model.AlertaSeguimiento
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
 import duoc.example.gestionoportunidades.ui.theme.colores
+import duoc.example.gestionoportunidades.util.Estados
 import duoc.example.gestionoportunidades.util.comoFechaCorta
 
 // DashboardScreen: pantalla principal que se muestra después del login.
@@ -96,6 +99,11 @@ fun DashboardScreen(
             // Seguimientos cuya fechaProximo ya pasó y no son "Cambio de estado".
             // Icono: Warning (triángulo de advertencia). Color: error (rojo).
             // Si el supervisor, muestra quién es el responsable de cada gestión atrasada.
+            // --- INDICADORES DEL EQUIPO (HU-25): solo para el supervisor ---
+            if (esSupervisor) {
+                item { IndicadoresCard(ui.indicadores) }
+            }
+
             seccion("Gestiones atrasadas", ui.seguimientosAtrasados, "No hay gestiones atrasadas") { alerta ->
                 DashboardCard(
                     titulo = alerta.nombreOportunidad,
@@ -123,6 +131,28 @@ fun DashboardScreen(
             // Oportunidades con fecha de inicio futura que no estén descartadas.
             // Icono: Event (calendario). Color: primary (color principal del tema).
             // Muestra: comuna, estado actual y fecha de inicio (formateada con comoFechaCorta).
+            // --- HU-20: oportunidades que necesitan atención ---
+            seccion("Sin seguimiento", ui.sinSeguimiento, "Todas las oportunidades tienen gestiones") { oportunidad ->
+                DashboardCard(
+                    titulo = oportunidad.nombre,
+                    detalle = "Aún sin gestiones · ${oportunidad.estado} · inicia el " +
+                            oportunidad.fechaInicio.comoFechaCorta(),
+                    icono = Icons.Default.PendingActions,
+                    colorIcono = MaterialTheme.colorScheme.error,
+                    onClick = { onVerOportunidad(oportunidad.idOportunidad) }
+                )
+            }
+
+            seccion("Sin contacto", ui.sinContacto, "Todas las organizaciones tienen contactos") { oportunidad ->
+                DashboardCard(
+                    titulo = oportunidad.nombre,
+                    detalle = "La organización no tiene contactos · ${oportunidad.estado}",
+                    icono = Icons.Default.ContactPhone,
+                    colorIcono = MaterialTheme.colores.advertencia,
+                    onClick = { onVerOportunidad(oportunidad.idOportunidad) }
+                )
+            }
+
             seccion("Eventos próximos", ui.eventosProximos, "No hay eventos próximos") { oportunidad ->
                 DashboardCard(
                     titulo = oportunidad.nombre,
@@ -228,6 +258,33 @@ fun DashboardCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+    }
+}
+
+// Tarjeta de indicadores del equipo (HU-25): total de oportunidades, cuántas hay en cada estado y
+// la conversión (porcentaje de oportunidades Confirmadas sobre el total).
+@Composable
+private fun IndicadoresCard(indicadores: IndicadoresEquipo) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Indicadores del equipo", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Total de oportunidades: ${indicadores.total}",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = "Conversión: " + (indicadores.conversionPorcentaje?.let { "$it %" } ?: "sin datos") +
+                        " (confirmadas sobre el total)",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            HorizontalDivider(Modifier.padding(vertical = 4.dp))
+            // Se recorre Estados.todos para mostrar siempre el mismo orden y los estados con 0
+            Estados.todos.forEach { estado ->
+                val cantidad = indicadores.porEstado.firstOrNull { it.estado == estado }?.cantidad ?: 0
+                Text("$estado: $cantidad", style = MaterialTheme.typography.bodyMedium)
             }
         }
     }

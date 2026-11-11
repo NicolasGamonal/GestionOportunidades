@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import duoc.example.gestionoportunidades.model.ConteoEstado
 import duoc.example.gestionoportunidades.model.Oportunidad
 import kotlinx.coroutines.flow.Flow
 
@@ -94,6 +95,44 @@ interface OportunidadDao {
 
     // Cuenta cuántas oportunidades tiene una organización.
     // Se usa en la pantalla de organizaciones para mostrar un contador (ej: "3 oportunidades").
+    // HU-20: oportunidades activas que todavía no tienen NINGUNA gestión real.
+    // Las filas de tipo "Cambio de estado" las crea el sistema, no el ejecutivo, así que no cuentan.
+    // NOT EXISTS: "no existe ningún seguimiento de esta oportunidad que cumpla ...".
+    @Query("""
+    SELECT * FROM oportunidades
+    WHERE estado NOT IN ('Confirmada', 'Descartada')
+      AND (:idResponsable = 0 OR idResponsable = :idResponsable)
+      AND NOT EXISTS (
+          SELECT 1 FROM seguimientos s
+          WHERE s.idOportunidad = oportunidades.idOportunidad
+            AND s.tipoAccion != 'Cambio de estado'
+      )
+    ORDER BY fechaInicio ASC
+""")
+    fun obtenerSinGestiones(idResponsable: Long): Flow<List<Oportunidad>>
+
+    // HU-20: oportunidades activas cuya organización no tiene ningún contacto registrado.
+    @Query("""
+    SELECT * FROM oportunidades
+    WHERE estado NOT IN ('Confirmada', 'Descartada')
+      AND (:idResponsable = 0 OR idResponsable = :idResponsable)
+      AND NOT EXISTS (
+          SELECT 1 FROM contactos c
+          WHERE c.idOrganizacion = oportunidades.idOrganizacion
+      )
+    ORDER BY fechaInicio ASC
+""")
+    fun obtenerSinContacto(idResponsable: Long): Flow<List<Oportunidad>>
+
+    // HU-25: cuántas oportunidades hay en cada estado (0 = todo el equipo).
+    @Query("""
+    SELECT estado AS estado, COUNT(*) AS cantidad
+    FROM oportunidades
+    WHERE (:idResponsable = 0 OR idResponsable = :idResponsable)
+    GROUP BY estado
+""")
+    fun contarPorEstado(idResponsable: Long): Flow<List<ConteoEstado>>
+
     @Query("SELECT COUNT(*) FROM oportunidades WHERE idOrganizacion = :idOrganizacion")
     suspend fun contarPorOrganizacion(idOrganizacion: Long): Int
 

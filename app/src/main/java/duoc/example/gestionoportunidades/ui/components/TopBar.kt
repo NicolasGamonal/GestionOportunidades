@@ -3,6 +3,7 @@ package duoc.example.gestionoportunidades.ui.components
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,7 +64,10 @@ fun TopBar(
     // Es nullable (no Boolean) porque permite 3 estados:
     //   null → no mostrar botón
     //   { ... } → mostrar botón con esa acción
-    onCerrarSesion: (() -> Unit)? = null
+    onCerrarSesion: (() -> Unit)? = null,
+
+    // Abre la pantalla de perfil del usuario (HU-02). null = no se muestra el botón.
+    onPerfil: (() -> Unit)? = null
 ) {
     TopAppBar(
         // Título de la barra
@@ -88,6 +92,14 @@ fun TopBar(
         // Acciones (derecha): solo se muestra el botón de cerrar sesión
         // si onCerrarSesion no es null.
         actions = {
+            if (onPerfil != null) {
+                IconButton(onClick = onPerfil) {
+                    Icon(
+                        imageVector = Icons.Filled.AccountCircle,
+                        contentDescription = "Mi perfil"
+                    )
+                }
+            }
             if (onCerrarSesion != null) {
                 IconButton(onClick = onCerrarSesion) {
                     Icon(

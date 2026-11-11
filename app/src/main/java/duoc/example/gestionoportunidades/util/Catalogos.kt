@@ -20,6 +20,16 @@ object Catalogos {
         "Recursos Humanos", "Bienestar", "Beneficios", "Administración"
     )
 
+    // Niveles para los chips del formulario de oportunidad (HU-04 y HU-10)
+    val nivelesPotencial = listOf("Alto", "Medio", "Bajo")
+    val nivelesAfinidad = listOf("Alta", "Media", "Baja")
+
+    // Medio de contacto preferente de un contacto (HU-13)
+    val mediosContacto = listOf("Correo", "Teléfono", "WhatsApp", "Presencial")
+
+    // Evaluación de una activación (HU-24): 1 = mala, 5 = excelente
+    val evaluaciones = listOf(1, 2, 3, 4, 5)
+
     const val TIPO_CAMBIO_ESTADO = "Cambio de estado"
 
     val tiposAccion = listOf(
@@ -28,4 +38,5 @@ object Catalogos {
         "Reunión", "Llamada", "Seguimiento", "Recepción de respuesta",
         "Confirmación", "Cierre"
     )
+    val tiposNotaMarketing = listOf("Observación", "Material")
 }

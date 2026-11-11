@@ -3,6 +3,7 @@ package duoc.example.gestionoportunidades.data.repository
 import androidx.room.withTransaction
 import duoc.example.gestionoportunidades.data.local.AppDatabase
 import duoc.example.gestionoportunidades.model.Contacto
+import duoc.example.gestionoportunidades.model.ConteoEstado
 import duoc.example.gestionoportunidades.model.Oportunidad
 import duoc.example.gestionoportunidades.model.Organizacion
 import duoc.example.gestionoportunidades.model.Seguimiento
@@ -126,6 +127,17 @@ class OportunidadRepository(private val db: AppDatabase) {
     // Si el supervisor cambia el estado o reasigna, la UI del ejecutivo se actualiza sola.
     // Se usa en la pantalla de detalle para mantener los datos siempre frescos.
     fun observarPorId(id: Long): Flow<Oportunidad?> = oportunidadDao.observarPorId(id)
+
+    // HU-20: oportunidades sin gestiones y oportunidades cuya organización no tiene contactos.
+    fun obtenerSinGestiones(idResponsable: Long): Flow<List<Oportunidad>> =
+        oportunidadDao.obtenerSinGestiones(idResponsable)
+
+    fun obtenerSinContacto(idResponsable: Long): Flow<List<Oportunidad>> =
+        oportunidadDao.obtenerSinContacto(idResponsable)
+
+    // HU-25: conteo de oportunidades por estado.
+    fun contarPorEstado(idResponsable: Long): Flow<List<ConteoEstado>> =
+        oportunidadDao.contarPorEstado(idResponsable)
 
     // Cambia el estado de una oportunidad Y registra el historial en una sola transacción.
     //

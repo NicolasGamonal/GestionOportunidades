@@ -1,5 +1,6 @@
 package duoc.example.gestionoportunidades.ui.seguimiento
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,6 +12,7 @@ import duoc.example.gestionoportunidades.model.Seguimiento
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
 import duoc.example.gestionoportunidades.util.Permisos
 import duoc.example.gestionoportunidades.util.CampoSeguimiento
+import duoc.example.gestionoportunidades.util.Recordatorios
 import duoc.example.gestionoportunidades.util.ValidacionesFormularios
 import duoc.example.gestionoportunidades.util.fechaCortaAMillis
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,7 +45,11 @@ class FormularioSeguimientoViewModel(
     savedStateHandle: SavedStateHandle,
     private val seguimientoRepository: SeguimientoRepository,
     oportunidadRepository: OportunidadRepository,
-    contactoRepository: ContactoRepository
+    contactoRepository: ContactoRepository,
+
+    // Contexto de la aplicación (no de una Activity, así que no provoca fugas de memoria).
+    // Se usa para programar el recordatorio local del próximo seguimiento (HU-21).
+    private val appContext: Context
 ) : ViewModel() {
 
     // id de la oportunidad (viene de la ruta: "form_seguimiento/{idOportunidad}")
@@ -126,7 +132,15 @@ class FormularioSeguimientoViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(guardando = true, mensajeError = null) }
             try {
-                seguimientoRepository.insertar(seguimiento)
+                val idNuevo = seguimientoRepository.insertar(seguimiento)
+                // HU-21: aviso local el día del próximo seguimiento
+                Recordatorios.programarSeguimiento(
+                    context = appContext,
+                    idSeguimiento = idNuevo,
+                    nombreOportunidad = s.nombreOportunidad,
+                    proximaAccion = seguimiento.proximaAccion,
+                    fechaProximoMillis = seguimiento.fechaProximo
+                )
                 _uiState.update { it.copy(guardando = false, guardadoExitoso = true) }
             } catch (e: Exception) {
                 _uiState.update {

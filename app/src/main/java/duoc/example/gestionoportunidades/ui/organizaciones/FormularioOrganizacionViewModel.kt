@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import duoc.example.gestionoportunidades.util.CampoOrganizacion
+import duoc.example.gestionoportunidades.util.ValidacionesFormularios
 
 // ViewModel del formulario de crear/editar organización.
 // Solo el supervisor puede editar (Permisos.puedeEditarOrganizacion).

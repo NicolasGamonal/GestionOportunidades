@@ -6,6 +6,7 @@ sealed class Ruta(val ruta: String, val titulo: String) {
     object Oportunidades : Ruta("oportunidades", "Oportunidades")
     object Organizaciones : Ruta("organizaciones", "Organizaciones")
     object PanelSupervisor : Ruta("supervisor", "Panel Supervisor")
+    object Perfil : Ruta("perfil", "Mi perfil")   // HU-02
 
     object DetalleOportunidad : Ruta("oportunidades/{id}", "Detalle") {
         fun crear(id: Long) = "oportunidades/$id"
@@ -30,6 +31,10 @@ sealed class Ruta(val ruta: String, val titulo: String) {
     }
     object HistorialSeguimiento : Ruta("seguimiento/{idOportunidad}", "Historial de gestión") {
         fun crear(idOportunidad: Long) = "seguimiento/$idOportunidad"
+    }
+    // Resultado real de la activación de un evento (HU-24)
+    object FormularioResultado : Ruta("formulario_resultado/{idOportunidad}", "Resultado de la activación") {
+        fun crear(idOportunidad: Long) = "formulario_resultado/$idOportunidad"
     }
     object FormularioSeguimiento : Ruta("formulario_seguimiento/{idOportunidad}", "Nueva gestión") {
         fun crear(idOportunidad: Long) = "formulario_seguimiento/$idOportunidad"

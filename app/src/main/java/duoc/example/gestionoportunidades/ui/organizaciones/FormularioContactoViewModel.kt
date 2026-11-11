@@ -28,6 +28,7 @@ data class FormularioContactoUiState(
     val area: String = "",
     val correo: String = "",
     val telefono: String = "",
+    val medioPreferente: String = "Correo",   // Chips: siempre hay uno elegido (HU-13)
     val errores: Map<CampoContacto, String> = emptyMap(),
     val esEdicion: Boolean = false,
     val cargando: Boolean = false,
@@ -74,7 +75,8 @@ class FormularioContactoViewModel(
                         it.copy(
                             cargando = false,
                             nombre = contacto.nombre, cargo = contacto.cargo, area = contacto.area,
-                            correo = contacto.correo, telefono = contacto.telefono
+                            correo = contacto.correo, telefono = contacto.telefono,
+                            medioPreferente = contacto.medioPreferente
                         )
                     }
                 }
@@ -97,6 +99,9 @@ class FormularioContactoViewModel(
     fun onCorreoChange(v: String) = editar(CampoContacto.CORREO) { it.copy(correo = Validaciones.filtrarCorreo(v)) }
     fun onTelefonoChange(v: String) =
         editar(CampoContacto.TELEFONO) { it.copy(telefono = Validaciones.filtrarTelefono(v)) }
+
+    // Los chips no tienen error que limpiar, por eso no pasa por editar().
+    fun onMedioChange(v: String) = _uiState.update { it.copy(medioPreferente = v) }
 
     fun limpiarMensajeError() = _uiState.update { it.copy(mensajeError = null) }
 
@@ -121,6 +126,7 @@ class FormularioContactoViewModel(
             nombre = s.nombre.trim(),
             cargo = s.cargo.trim(),
             area = s.area,
+            medioPreferente = s.medioPreferente,
             correo = s.correo.trim(),
             telefono = s.telefono.trim(),
             idOrganizacion = idOrganizacion  // Siempre la org de la ruta

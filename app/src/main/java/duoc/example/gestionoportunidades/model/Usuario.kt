@@ -10,5 +10,7 @@ data class Usuario(
     val username: String,       // El nombre de usuario para el login local ficticio (ej: ejecutivo1)
     val contrasena: String,     // La clave local de prueba
     val nombreCompleto: String, // Nombre real para mostrar en los Dashboards
-    val rol: String             // "EJECUTIVO" o "SUPERVISOR"
+    val rol: String,            // "EJECUTIVO" o "SUPERVISOR"
+    val area: String = "",      // Área de la agencia a la que pertenece (se muestra en el perfil, HU-02)
+    val zona: String = ""       // Zona comercial que atiende (se muestra en el perfil, HU-02)
 )

@@ -29,6 +29,10 @@ import duoc.example.gestionoportunidades.ui.alertas.DashboardScreen
 import duoc.example.gestionoportunidades.ui.alertas.DashboardViewModel
 import duoc.example.gestionoportunidades.ui.auth.AuthViewModel
 import duoc.example.gestionoportunidades.ui.auth.LoginScreen
+import duoc.example.gestionoportunidades.ui.auth.PerfilScreen
+import duoc.example.gestionoportunidades.ui.auth.SesionManager
+import duoc.example.gestionoportunidades.ui.resultados.FormularioResultadoScreen
+import duoc.example.gestionoportunidades.ui.resultados.FormularioResultadoViewModel
 import duoc.example.gestionoportunidades.ui.components.TopBar
 import duoc.example.gestionoportunidades.ui.oportunidades.DetalleOportunidadScreen
 import duoc.example.gestionoportunidades.ui.oportunidades.DetalleOportunidadViewModel
@@ -108,6 +112,7 @@ fun NavegacionPrincipal() {
     // - Agregar la pestaña "Equipo" al menú inferior.
     // - Permitir/bloquear el acceso al PanelSupervisor.
     val esSupervisor = authState.usuarioLogueado?.rol == "SUPERVISOR"
+    val esMarketing = authState.usuarioLogueado?.rol == "MARKETING"
 
     // --- MENÚ INFERIOR (BOTTOM BAR) ---
     // Se construye dinámicamente según el rol:
@@ -127,9 +132,24 @@ fun NavegacionPrincipal() {
     if (esSupervisor) {
         itemsMenu.add(Triple(Ruta.PanelSupervisor, Icons.Filled.SupervisorAccount, "Equipo"))
     }
+    if (esMarketing) {
+        itemsMenu.clear()
+        itemsMenu.add(Triple(Ruta.Oportunidades, Icons.Filled.Assessment, "Oportunidades"))
+    }
 
     // --- CONDICIONES VISUALES ---
     // ¿Estamos en la pantalla de Login? (no se muestra TopBar ni BottomBar)
+    // Cerrar sesión: se usa desde el TopBar y desde la pantalla de perfil.
+    val cerrarSesion: () -> Unit = {
+        // 1. Borrar la sesión global (SesionManager)
+        authViewModel.cerrarSesion()
+        // 2. Navegar al Login y BORRAR TODA la pila de navegación (popUpTo inclusive = true).
+        //    Esto impide que el usuario presione "Volver" y regrese al Dashboard.
+        navController.navigate(Ruta.Login.ruta) {
+            popUpTo(navController.graph.id) { inclusive = true }
+        }
+    }
+
     val enLogin = rutaActual == Ruta.Login.ruta
 
     // ¿Se muestra el TopBar? (siempre, excepto en Login que tiene su propio diseño)
@@ -165,6 +185,8 @@ fun NavegacionPrincipal() {
                     Ruta.FormularioOrganizacion.ruta -> if (editando) "Editar organización" else "Nueva organización"
                     Ruta.FormularioContacto.ruta -> if (editando) "Editar contacto" else "Nuevo contacto"
                     Ruta.HistorialSeguimiento.ruta -> "Historial de gestión"
+                    Ruta.Perfil.ruta -> "Mi perfil"
+                    Ruta.FormularioResultado.ruta -> "Resultado de la activación"
                     Ruta.FormularioSeguimiento.ruta -> "Nueva gestión"
                     else -> "Gestión"
                 }
@@ -178,15 +200,10 @@ fun NavegacionPrincipal() {
                     titulo = titulo,
                     mostrarBotonVolver = !esPantallaDelMenu,
                     onVolverClick = { navController.popBackStack() },
-                    onCerrarSesion = {
-                        // 1. Borrar la sesión global (SesionManager)
-                        authViewModel.cerrarSesion()
-                        // 2. Navegar al Login y BORRAR TODA la pila de navegación
-                        //    (popUpTo inclusive = true: elimina Login y todo lo que haya encima).
-                        //    Esto impide que el usuario presione "Volver" y regrese al Dashboard.
-                        navController.navigate(Ruta.Login.ruta) {
-                            popUpTo(navController.graph.id) { inclusive = true }
-                        }
+                    onCerrarSesion = cerrarSesion,
+                    // El botón de perfil se oculta cuando ya se está en el perfil
+                    onPerfil = if (rutaActual == Ruta.Perfil.ruta) null else {
+                        { navController.navigate(Ruta.Perfil.ruta) { launchSingleTop = true } }
                     }
                 )
             }
@@ -230,9 +247,9 @@ fun NavegacionPrincipal() {
                 LoginScreen(
                     viewModel = authViewModel,
                     onLoginExitoso = { _, _ ->
-                        // Navega al Dashboard y elimina Login de la pila
-                        // (el usuario no puede "volver" al login con el botón de atrás)
-                        navController.navigate(Ruta.Dashboard.ruta) {
+                        // Marketing no tiene dashboard propio: entra directo a las oportunidades confirmadas
+                        val destino = if (SesionManager.getRol() == "MARKETING") Ruta.Oportunidades.ruta else Ruta.Dashboard.ruta
+                        navController.navigate(destino) {
                             popUpTo(Ruta.Login.ruta) { inclusive = true }
                         }
                     }
@@ -291,6 +308,9 @@ fun NavegacionPrincipal() {
                     // Al presionar "Editar" → navegar al formulario con el id (modo edición)
                     onEditar = { id ->
                         navController.navigate(Ruta.FormularioOportunidad.editar(id))
+                    },
+                    onRegistrarResultado = { id ->
+                        navController.navigate(Ruta.FormularioResultado.crear(id))
                     }
                 )
             }
@@ -417,6 +437,24 @@ fun NavegacionPrincipal() {
             // BLOQUEO DE RUTA: si un ejecutivo intenta acceder (por manipulación
             // de la URL o bug), se redirige automáticamente al Dashboard.
             // Esto es una capa de seguridad adicional a Permisos.kt.
+            // Perfil del usuario con sesión iniciada (HU-02)
+            composable(Ruta.Perfil.ruta) {
+                PerfilScreen(onCerrarSesion = cerrarSesion)
+            }
+
+            // Registrar o editar el resultado de una activación (HU-24)
+            composable(
+                route = Ruta.FormularioResultado.ruta,
+                arguments = listOf(navArgument("idOportunidad") { type = NavType.LongType })
+            ) {
+                val vm: FormularioResultadoViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                FormularioResultadoScreen(
+                    viewModel = vm,
+                    onGuardado = { navController.popBackStack() },
+                    onCancelar = { navController.popBackStack() }
+                )
+            }
+
             composable(Ruta.PanelSupervisor.ruta) {
                 if (esSupervisor) {
                     // Supervisor: muestra el panel normalmente

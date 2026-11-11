@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import duoc.example.gestionoportunidades.data.repository.OportunidadRepository
 import duoc.example.gestionoportunidades.data.repository.SeguimientoRepository
+import duoc.example.gestionoportunidades.model.ConteoEstado
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
 import duoc.example.gestionoportunidades.util.inicioDeHoyMillis
 import kotlinx.coroutines.flow.SharingStarted
@@ -79,16 +80,24 @@ class DashboardViewModel(
     // - SharingStarted.WhileSubscribed(5_000): el Flow se cancela 5 segundos después
     //   de que la última Screen se desuscribe (ahorra recursos si el usuario navega lejos).
     // - DashboardUiState(): valor inicial (isLoading = true por defecto en el data class).
+    // combine con 5 Flows: cada vez que cambia cualquiera de las consultas de Room, se recalcula el
+    // estado completo del dashboard y la pantalla se actualiza sola.
     val uiState: StateFlow<DashboardUiState> = combine(
         oportunidadRepository.obtenerEventosProximos(inicioDeHoyMillis(), idResponsable),
-        seguimientoRepository.obtenerUltimasGestiones(idResponsable)
-    ) { proximos, gestiones ->
+        seguimientoRepository.obtenerUltimasGestiones(idResponsable),
+        oportunidadRepository.obtenerSinGestiones(idResponsable),      // HU-20
+        oportunidadRepository.obtenerSinContacto(idResponsable),       // HU-20
+        oportunidadRepository.contarPorEstado(idResponsable)           // HU-25
+    ) { proximos, gestiones, sinGestiones, sinContacto, conteos ->
         val ahora = System.currentTimeMillis()
         DashboardUiState(
             isLoading = false,  // Ya hay datos: se desactiva el CircularProgressIndicator
             eventosProximos = proximos,
             seguimientosPendientes = gestiones.filter { it.fechaProximo >= ahora },
-            seguimientosAtrasados = gestiones.filter { it.fechaProximo < ahora }
+            seguimientosAtrasados = gestiones.filter { it.fechaProximo < ahora },
+            sinSeguimiento = sinGestiones,
+            sinContacto = sinContacto,
+            indicadores = calcularIndicadores(conteos)
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
 
@@ -100,5 +109,16 @@ class DashboardViewModel(
         // Supervisor → ve todo el equipo (0L)
         // Ejecutivo → solo las suyas (su propio id)
         return if (usuario.rol == "SUPERVISOR") TODO_EL_EQUIPO else usuario.idUsuario
+    }
+
+    // Conversión = Confirmadas / total de oportunidades (en porcentaje, redondeado).
+    private fun calcularIndicadores(conteos: List<ConteoEstado>): IndicadoresEquipo {
+        val total = conteos.sumOf { it.cantidad }
+        val confirmadas = conteos.firstOrNull { it.estado == "Confirmada" }?.cantidad ?: 0
+        return IndicadoresEquipo(
+            total = total,
+            porEstado = conteos,
+            conversionPorcentaje = if (total > 0) Math.round(confirmadas * 100f / total) else null
+        )
     }
 }

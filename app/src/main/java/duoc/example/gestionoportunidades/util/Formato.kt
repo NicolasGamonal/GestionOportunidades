@@ -11,6 +11,7 @@ import java.util.Locale
 private val localeChile = Locale.forLanguageTag("es-CL")
 private val formatoFechaHora = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm", localeChile)
 private val formatoFechaCorta = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+private val formatoHora = DateTimeFormatter.ofPattern("HH:mm")
 
 fun Long.comoFechaHora(): String =
     Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).format(formatoFechaHora)
@@ -49,3 +50,13 @@ fun Long.aInicioDeJornada(): Long {
 /** Medianoche de hoy en la zona del teléfono. */
 fun inicioDeHoyMillis(): Long =
     LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+// "HH:mm" (24 horas) de un timestamp, en la zona horaria del dispositivo. Se usa para mostrar y
+// editar el horario de un evento (HU-08).
+fun Long.comoHora(): String =
+    Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).format(formatoHora)
+
+// Convierte "HH:mm" a LocalTime; devuelve null si el texto no es una hora válida.
+fun String.comoHoraOrNull(): LocalTime? = runCatching { LocalTime.parse(this, formatoHora) }.getOrNull()
+
+// Formatea una hora y minutos como "HH:mm" (lo usa el selector de hora).
+fun horaComoTexto(hora: Int, minuto: Int): String = LocalTime.of(hora, minuto).format(formatoHora)

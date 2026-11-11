@@ -22,6 +22,11 @@ import duoc.example.gestionoportunidades.util.comoFechaCorta
 import duoc.example.gestionoportunidades.util.comoFechaHora
 import duoc.example.gestionoportunidades.util.comoPesos
 import duoc.example.gestionoportunidades.model.Evidencia
+import duoc.example.gestionoportunidades.model.ResultadoActivacion
+import duoc.example.gestionoportunidades.ui.auth.SesionManager
+import duoc.example.gestionoportunidades.ui.notas.SeccionNotasMarketing
+import duoc.example.gestionoportunidades.util.Permisos
+import duoc.example.gestionoportunidades.util.Regiones
 
 // DetalleOportunidadScreen: pantalla de detalle completo de una oportunidad.
 //
@@ -71,7 +76,9 @@ fun DetalleOportunidadScreen(
     // Navegar al historial de gestiones de esta oportunidad.
     onVerHistorial: (Long) -> Unit,
     // Navegar al formulario de edición de esta oportunidad.
-    onEditar: (Long) -> Unit
+    onEditar: (Long) -> Unit,
+    // Navegar al formulario de resultado de la activación (HU-24).
+    onRegistrarResultado: (Long) -> Unit
 ) {
     // Observa el estado del ViewModel. Se actualiza cuando:
     // - Termina la carga inicial (isLoading → false)
@@ -119,6 +126,7 @@ fun DetalleOportunidadScreen(
 
             // 4. Contenido normal: se muestra el detalle completo.
             else -> DetalleContenido(
+
                 oportunidad = oportunidad,
                 organizacion = uiState.organizacion,
                 responsable = uiState.responsable,
@@ -129,7 +137,10 @@ fun DetalleOportunidadScreen(
                 onVerHistorial = { onVerHistorial(oportunidad.idOportunidad) },
                 evidencias = uiState.evidencias,
                 onFotoCapturada = viewModel::registrarEvidencia,
-                onEliminarFoto = viewModel::eliminarEvidencia
+                onEliminarFoto = viewModel::eliminarEvidencia,
+                resultado = uiState.resultado,
+                puedeRegistrarResultado = uiState.puedeRegistrarResultado,
+                onRegistrarResultado = { onRegistrarResultado(oportunidad.idOportunidad) }
             )
         }
         // Snackbar en la parte inferior: se muestra cuando hay mensaje de éxito/error.
@@ -175,6 +186,7 @@ private fun MensajeCentrado(texto: String, onVolver: () -> Unit) {
 @Composable
 private fun DetalleContenido(
     // La oportunidad a mostrar (viene del UiState, se actualiza en tiempo real vía Flow)
+
     oportunidad: Oportunidad,
     // Nombre de la organización (resuelto por el ViewModel desde el idOrganizacion FK)
     organizacion: String,
@@ -198,12 +210,17 @@ private fun DetalleContenido(
     // Callback: se llama con la ruta cuando se captura una foto válida
     onFotoCapturada: (String) -> Unit,
     // Callback: se llama con la Evidencia a borrar
-    onEliminarFoto: (Evidencia) -> Unit
+    onEliminarFoto: (Evidencia) -> Unit,
+    // Resultado de la activación y si el usuario lo puede registrar (HU-24)
+    resultado: ResultadoActivacion?,
+    puedeRegistrarResultado: Boolean,
+    onRegistrarResultado: () -> Unit
 
 ) {
     // Column scrollable: el detalle puede ser más largo que la pantalla (especialmente
     // con muchas fotos o observaciones largas).
     // spacedBy(12.dp): espacio uniforme entre secciones.
+    val puedeGestionar = Permisos.puedeGestionarOportunidades(SesionManager.getRol())
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -230,10 +247,12 @@ private fun DetalleContenido(
         // --- BOTÓN: EDITAR ---
         // El ViewModel del formulario re-valida el permiso al abrir (doble seguridad).
         // Aquí solo se muestra el botón; la restricción real está en el ViewModel.
-        OutlinedButton(onClick = onEditar, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Default.Edit, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("Editar oportunidad")
+        if(puedeGestionar) {
+            OutlinedButton(onClick = onEditar, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Edit, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Editar oportunidad")
+            }
         }
 
         // Divider: separa visualmente la cabecera de los datos
@@ -247,8 +266,15 @@ private fun DetalleContenido(
         DetalleItem("Responsable", responsable)
         DetalleItem("Tipo de evento", oportunidad.tipoEvento)
         DetalleItem("Comuna", oportunidad.comuna)
+        // La región no está en Room: se deriva de la comuna (util/Regiones.kt).
+        DetalleItem("Región", Regiones.regionDe(oportunidad.comuna) ?: "—")
         DetalleItem("Público esperado", oportunidad.publicoEsperado.toString())
         DetalleItem("Prioridad", oportunidad.prioridad)
+        DetalleItem("Potencial comercial", oportunidad.potencialComercial)
+        DetalleItem("Afinidad con la agencia", oportunidad.afinidad)
+        DetalleItem("Público objetivo", oportunidad.publicoObjetivo.ifBlank { "—" })
+        DetalleItem("Espacios disponibles", oportunidad.espaciosDisponibles.toString())
+        DetalleItem("Fuente de información", oportunidad.fuenteInformacion.ifBlank { "—" })
         // comoPesos(): convierte el Double a formato monetario chileno (ej: "$850.000")
         DetalleItem("Costo referencial", oportunidad.costoReferencial.comoPesos())
 
@@ -277,6 +303,9 @@ private fun DetalleContenido(
 
         // --- SECCIÓN: OBSERVACIONES ---
         // Texto libre del ejecutivo (puede ser "" si no hay observaciones).
+        BloqueTexto("Descripción", oportunidad.descripcion, "Sin descripción")
+        BloqueTexto("Condiciones de participación", oportunidad.condicionesParticipacion, "Sin condiciones registradas")
+        BloqueTexto("Requisitos", oportunidad.requisitos, "Sin requisitos registrados")
         Text("Observaciones", style = MaterialTheme.typography.titleSmall)
         Text(oportunidad.observaciones, style = MaterialTheme.typography.bodyLarge)
 
@@ -289,24 +318,39 @@ private fun DetalleContenido(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
+        // --- SECCIÓN: RESULTADO DE LA ACTIVACIÓN (HU-24) ---
+        // Solo aparece si la oportunidad está Confirmada o si ya tiene un resultado guardado.
+        if (oportunidad.estado == "Confirmada" || resultado != null) {
+            SeccionResultado(resultado, puedeRegistrarResultado, onRegistrarResultado)
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        }
+        if (oportunidad.estado == "Confirmada") {
+            SeccionNotasMarketing(puedeRegistrar = Permisos.puedeRegistrarNotas(SesionManager.getRol()))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        }
+
         // --- SECCIÓN: EVIDENCIA FOTOGRAFÍCA ---
         // Cámara + galería de fotos asociadas a esta oportunidad.
         // Componente de ui/nativo/ que maneja: permiso, captura, cancelación, galería, eliminación.
-        SeccionEvidencia(
-            evidencias = evidencias,
-            onFotoCapturada = onFotoCapturada,
-            onEliminarFoto = onEliminarFoto
-        )
+        if(puedeGestionar){
+            SeccionEvidencia(
+                evidencias = evidencias,
+                onFotoCapturada = onFotoCapturada,
+                onEliminarFoto = onEliminarFoto
+            )
+        }
 
         // --- BOTÓN: VER HISTORIAL ---
         // Navega a la pantalla de historial de gestiones (timeline de seguimientos).
         // Color secondary: lo distingue del botón primario (Editar) y del de error (Descartar).
-        Button(
-            onClick = onVerHistorial,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-        ) {
-            Text("Ver historial de gestión")
+        if(puedeGestionar){
+            Button(
+                onClick = onVerHistorial,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+            ) {
+                Text("Ver historial de gestión")
+            }
         }
 
         // --- BOTÓN: VOLVER ---
@@ -454,5 +498,47 @@ fun DetalleItem(titulo: String, valor: String) {
         )
         // Valor (dato del campo): negro, tamaño normal
         Text(text = valor, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+// Texto con título; si el texto está vacío muestra un mensaje de reemplazo en gris.
+@Composable
+private fun BloqueTexto(titulo: String, texto: String, vacio: String) {
+    Text(titulo, style = MaterialTheme.typography.titleSmall)
+    if (texto.isBlank()) {
+        Text(vacio, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    } else {
+        Text(texto, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+// Resultado real del evento (HU-24): métricas, evaluación y aprendizajes, más el botón para
+// registrarlo o editarlo (solo si el usuario tiene permiso).
+@Composable
+private fun SeccionResultado(
+    resultado: ResultadoActivacion?,
+    puedeRegistrar: Boolean,
+    onRegistrar: () -> Unit
+) {
+    Text("Resultado de la activación", style = MaterialTheme.typography.titleMedium)
+
+    if (resultado == null) {
+        Text(
+            "Aún no se registra el resultado de este evento.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    } else {
+        DetalleItem("Asistentes reales", resultado.asistentes.toString())
+        DetalleItem("Contactos generados", resultado.contactosGenerados.toString())
+        DetalleItem("Inscripciones o convenios", resultado.inscripciones.toString())
+        DetalleItem("Evaluación", "${resultado.evaluacion} de 5")
+        BloqueTexto("Aprendizajes", resultado.aprendizajes, "Sin aprendizajes registrados")
+    }
+
+    if (puedeRegistrar) {
+        Button(onClick = onRegistrar, modifier = Modifier.fillMaxWidth()) {
+            Text(if (resultado == null) "Registrar resultado" else "Editar resultado")
+        }
     }
 }

@@ -5,8 +5,10 @@ import duoc.example.gestionoportunidades.data.local.AppDatabase
 import duoc.example.gestionoportunidades.data.repository.AuthRepository
 import duoc.example.gestionoportunidades.data.repository.ContactoRepository
 import duoc.example.gestionoportunidades.data.repository.EvidenciaRepository
+import duoc.example.gestionoportunidades.data.repository.NotaMarketingRepository
 import duoc.example.gestionoportunidades.data.repository.OportunidadRepository
 import duoc.example.gestionoportunidades.data.repository.OrganizacionRepository
+import duoc.example.gestionoportunidades.data.repository.ResultadoActivacionRepository
 import duoc.example.gestionoportunidades.data.repository.SeguimientoRepository
 
 // AppContainer: el "centro de distribución" de dependencias de la app.
@@ -56,4 +58,8 @@ class AppContainer(context: Context) {
     // los archivos físicos de las fotos (ej: /data/data/.../files/).
     // Lo usa: DetalleOportunidadViewModel (cámara y galería).
     val evidenciaRepository = EvidenciaRepository(db, context.filesDir)
+
+    // Resultado de la activación de un evento (HU-24)
+    val resultadoRepository = ResultadoActivacionRepository(db)
+    val notaRepository = NotaMarketingRepository(db)
 }

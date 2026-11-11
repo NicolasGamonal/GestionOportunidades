@@ -2,6 +2,7 @@ package duoc.example.gestionoportunidades.data.repository
 
 import duoc.example.gestionoportunidades.data.local.AppDatabase
 import duoc.example.gestionoportunidades.model.AlertaSeguimiento
+import duoc.example.gestionoportunidades.model.GestionOrganizacion
 import duoc.example.gestionoportunidades.model.Seguimiento
 import kotlinx.coroutines.flow.Flow
 
@@ -61,4 +62,8 @@ class SeguimientoRepository(private val db: AppDatabase) {
     // Se usa en el Dashboard para el resumen de gestiones activas del equipo.
     fun obtenerUltimasGestiones(idResponsable: Long): Flow<List<AlertaSeguimiento>> =
         dao.obtenerUltimasGestiones(idResponsable)
+
+    // HU-14: historial de gestiones con una organización (0 = sin filtrar por responsable).
+    fun obtenerHistorialPorOrganizacion(idOrganizacion: Long, idResponsable: Long): Flow<List<GestionOrganizacion>> =
+        dao.obtenerHistorialPorOrganizacion(idOrganizacion, idResponsable)
 }

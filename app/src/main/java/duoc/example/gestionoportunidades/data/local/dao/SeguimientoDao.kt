@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import duoc.example.gestionoportunidades.model.AlertaSeguimiento
+import duoc.example.gestionoportunidades.model.GestionOrganizacion
 import duoc.example.gestionoportunidades.model.Seguimiento
 import kotlinx.coroutines.flow.Flow
 
@@ -81,6 +82,30 @@ interface SeguimientoDao {
     // Cuenta cuántos seguimientos tiene una oportunidad.
     // Se usa para mostrar un contador en la UI (ej: "5 gestiones")
     // o para validar antes de borrar la oportunidad.
+    // HU-14: todas las gestiones hechas con una organización (a través de sus oportunidades).
+    // - Se excluyen los "Cambio de estado" (son del sistema, no gestiones con la organización).
+    // - LEFT JOIN contactos: la gestión puede no tener contacto asociado (idContacto null).
+    // - (:idResponsable = 0 OR ...): el supervisor ve todo; el ejecutivo solo lo de sus oportunidades.
+    @Query("""
+    SELECT s.idSeguimiento AS idSeguimiento,
+           s.fechaHora AS fechaHora,
+           s.tipoAccion AS tipoAccion,
+           s.resultado AS resultado,
+           o.idOportunidad AS idOportunidad,
+           o.nombre AS nombreOportunidad,
+           u.nombreCompleto AS autor,
+           c.nombre AS nombreContacto
+    FROM seguimientos s
+    INNER JOIN oportunidades o ON o.idOportunidad = s.idOportunidad
+    INNER JOIN usuarios u ON u.idUsuario = s.idUsuario
+    LEFT JOIN contactos c ON c.idContacto = s.idContacto
+    WHERE o.idOrganizacion = :idOrganizacion
+      AND s.tipoAccion != 'Cambio de estado'
+      AND (:idResponsable = 0 OR o.idResponsable = :idResponsable)
+    ORDER BY s.fechaHora DESC
+""")
+    fun obtenerHistorialPorOrganizacion(idOrganizacion: Long, idResponsable: Long): Flow<List<GestionOrganizacion>>
+
     @Query("SELECT COUNT(*) FROM seguimientos WHERE idOportunidad = :idOportunidad")
     suspend fun contarPorOportunidad(idOportunidad: Long): Int
 

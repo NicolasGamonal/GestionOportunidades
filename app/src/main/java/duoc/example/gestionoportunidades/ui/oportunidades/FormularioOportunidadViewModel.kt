@@ -13,6 +13,8 @@ import duoc.example.gestionoportunidades.util.Permisos
 import duoc.example.gestionoportunidades.util.Validaciones
 import duoc.example.gestionoportunidades.util.ValidacionesFormularios
 import duoc.example.gestionoportunidades.util.comoFechaCorta
+import duoc.example.gestionoportunidades.util.comoHora
+import duoc.example.gestionoportunidades.util.comoHoraOrNull
 import duoc.example.gestionoportunidades.util.fechaCortaAMillis
 import duoc.example.gestionoportunidades.util.hoyComoFechaCorta
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -83,6 +85,21 @@ data class FormularioUiState(
     val costoReferencial: String = "",
     // Observaciones (texto libre, máx 500 caracteres, opcional)
     val observaciones: String = "",
+
+    // --- Campos agregados (HU-03, HU-04, HU-08, HU-10, HU-11) ---
+    // Horario del evento: "HH:mm". Se combina con las fechas al guardar (ver aMillisConHora).
+    val horaInicio: String = "09:00",
+    val horaTermino: String = "18:00",
+    val descripcion: String = "",
+    val fuenteInformacion: String = "",
+    // Chips: siempre tienen un valor, por eso no necesitan validación.
+    val potencialComercial: String = "Medio",
+    val afinidad: String = "Media",
+    val publicoObjetivo: String = "",
+    val condicionesParticipacion: String = "",
+    val requisitos: String = "",
+    // String porque viene de un campo de texto; se convierte a Int al guardar.
+    val espaciosDisponibles: String = "0",
 
     // --- ERRORES DE VALIDACIÓN ---
     // Mapa de campo → mensaje de error. Si un campo no tiene clave en el mapa, es válido.
@@ -205,6 +222,16 @@ class FormularioOportunidadViewModel(
                     prioridad = op.prioridad,
                     costoReferencial = op.costoReferencial.toLong().toString(),
                     observaciones = op.observaciones,
+                    horaInicio = op.fechaInicio.comoHora(),
+                    horaTermino = op.fechaTermino.comoHora(),
+                    descripcion = op.descripcion,
+                    fuenteInformacion = op.fuenteInformacion,
+                    potencialComercial = op.potencialComercial,
+                    afinidad = op.afinidad,
+                    publicoObjetivo = op.publicoObjetivo,
+                    condicionesParticipacion = op.condicionesParticipacion,
+                    requisitos = op.requisitos,
+                    espaciosDisponibles = op.espaciosDisponibles.toString(),
                     // Calcular si se puede eliminar:
                     // 1. Debe estar en estado "Identificada" (regla del repositorio)
                     // 2. El usuario debe tener permiso (Permisos.puedeEliminarOportunidad)
@@ -281,6 +308,35 @@ class FormularioOportunidadViewModel(
 
     // Limpia el mensaje de error general (lo pone a null).
     // Se llama desde FormularioContenedor después de mostrar el Snackbar.
+    fun onHoraInicioChange(v: String) =
+        editar(CampoOportunidad.HORA_TERMINO) { it.copy(horaInicio = v) }
+
+    fun onHoraTerminoChange(v: String) =
+        editar(CampoOportunidad.HORA_TERMINO) { it.copy(horaTermino = v) }
+
+    fun onDescripcionChange(v: String) =
+        editar(CampoOportunidad.DESCRIPCION) { it.copy(descripcion = v) }
+
+    fun onFuenteChange(v: String) =
+        editar(CampoOportunidad.FUENTE) { it.copy(fuenteInformacion = v) }
+
+    // editar(null): los chips no tienen error que limpiar.
+    fun onPotencialChange(v: String) = editar(null) { it.copy(potencialComercial = v) }
+
+    fun onAfinidadChange(v: String) = editar(null) { it.copy(afinidad = v) }
+
+    fun onPublicoObjetivoChange(v: String) =
+        editar(CampoOportunidad.PUBLICO_OBJETIVO) { it.copy(publicoObjetivo = v) }
+
+    fun onCondicionesChange(v: String) =
+        editar(CampoOportunidad.CONDICIONES) { it.copy(condicionesParticipacion = v) }
+
+    fun onRequisitosChange(v: String) =
+        editar(CampoOportunidad.REQUISITOS) { it.copy(requisitos = v) }
+
+    fun onEspaciosChange(v: String) =
+        editar(CampoOportunidad.ESPACIOS) { it.copy(espaciosDisponibles = Validaciones.filtrarSoloDigitos(v, 4)) }
+
     fun limpiarMensajeError() = _uiState.update { it.copy(mensajeError = null) }
 
     // --- CONVERSIÓN DE FECHAS ---
@@ -299,6 +355,10 @@ class FormularioOportunidadViewModel(
     //   - Detección: MIDNIGHT (00:00) → solo importa el día
     //   - Inicio: 09:00 → hora típica de inicio de eventos
     //   - Término: 18:00 → hora típica de término de eventos
+    // Fecha "dd/MM/yyyy" + hora "HH:mm" -> milisegundos. Si la hora no es válida usa la de respaldo.
+    private fun aMillisConHora(fecha: String, hora: String, respaldo: LocalTime): Long =
+        fecha.fechaCortaAMillis(hora.comoHoraOrNull() ?: respaldo)
+
     private fun aMillis(fecha: String, original: Long?, horaPorDefecto: LocalTime): Long =
         if (original != null && original.comoFechaCorta() == fecha) original
         else fecha.fechaCortaAMillis(horaPorDefecto)
@@ -323,10 +383,18 @@ class FormularioOportunidadViewModel(
             fechaDeteccion = s.fechaDeteccion,
             fechaInicio = s.fechaInicio,
             fechaTermino = s.fechaTermino,
+            horaInicio = s.horaInicio,
+            horaTermino = s.horaTermino,
             comuna = s.comuna,
             publicoEsperado = s.publicoEsperado,
             costoReferencial = s.costoReferencial,
-            observaciones = s.observaciones
+            observaciones = s.observaciones,
+            descripcion = s.descripcion,
+            fuenteInformacion = s.fuenteInformacion,
+            publicoObjetivo = s.publicoObjetivo,
+            condicionesParticipacion = s.condicionesParticipacion,
+            requisitos = s.requisitos,
+            espaciosDisponibles = s.espaciosDisponibles
         )
         if (errores.isNotEmpty()) {
             // Se marcan los errores y se conservan todos los valores escritos
@@ -351,8 +419,9 @@ class FormularioOportunidadViewModel(
             tipoEvento = s.tipoEvento,
             // Fechas: se convierten de "dd/MM/yyyy" a Long (ms), conservando la hora original si no cambió
             fechaDeteccion = aMillis(s.fechaDeteccion, base?.fechaDeteccion, LocalTime.MIDNIGHT),
-            fechaInicio = aMillis(s.fechaInicio, base?.fechaInicio, LocalTime.of(9, 0)),
-            fechaTermino = aMillis(s.fechaTermino, base?.fechaTermino, LocalTime.of(18, 0)),
+            // Inicio y término usan la hora elegida en el formulario (HU-08).
+            fechaInicio = aMillisConHora(s.fechaInicio, s.horaInicio, LocalTime.of(9, 0)),
+            fechaTermino = aMillisConHora(s.fechaTermino, s.horaTermino, LocalTime.of(18, 0)),
             comuna = s.comuna.trim(),
             // Conversión de String a Int (ya validó que es un número positivo)
             publicoEsperado = s.publicoEsperado.toInt(),
@@ -363,6 +432,14 @@ class FormularioOportunidadViewModel(
             // Conversión de String a Double (ya validó que es un número no negativo)
             costoReferencial = s.costoReferencial.toDouble(),
             observaciones = s.observaciones.trim(),
+            descripcion = s.descripcion.trim(),
+            fuenteInformacion = s.fuenteInformacion.trim(),
+            potencialComercial = s.potencialComercial,
+            afinidad = s.afinidad,
+            publicoObjetivo = s.publicoObjetivo.trim(),
+            condicionesParticipacion = s.condicionesParticipacion.trim(),
+            requisitos = s.requisitos.trim(),
+            espaciosDisponibles = s.espaciosDisponibles.toInt(),
             // checkNotNull: ya validó que idOrganizacion no es null, así que esto no debería fallar
             idOrganizacion = checkNotNull(s.idOrganizacion),
             // Lógica de negocio para el responsable:

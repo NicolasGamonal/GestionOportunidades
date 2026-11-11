@@ -15,6 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import duoc.example.gestionoportunidades.model.Contacto
+import duoc.example.gestionoportunidades.model.GestionOrganizacion
+import duoc.example.gestionoportunidades.util.Regiones
+import duoc.example.gestionoportunidades.util.comoFechaHora
 import duoc.example.gestionoportunidades.ui.components.PantallaMensaje
 import duoc.example.gestionoportunidades.ui.oportunidades.DetalleItem
 
@@ -119,7 +122,9 @@ fun DetalleOrganizacionScreen(
                 Column {
                     DetalleItem("Tipo", org.tipo)        // "Municipalidad", "Empresa privada", etc.
                     DetalleItem("Rubro", org.rubro)      // "Gobierno", "Logística", "Salud", etc.
-                    DetalleItem("Comuna", org.comuna)    // "Providencia", "Maipú", etc.
+                    DetalleItem("Comuna", org.comuna)
+                    // La región no se guarda: se deriva de la comuna (util/Regiones.kt)
+                    DetalleItem("Región", Regiones.regionDe(org.comuna) ?: "—")    // "Providencia", "Maipú", etc.
                 }
             }
 
@@ -178,6 +183,27 @@ fun DetalleOrganizacionScreen(
                     Text("Agregar contacto")
                 }
             }
+
+            // --- HISTORIAL DE GESTIONES CON LA ORGANIZACIÓN (HU-14) ---
+            item {
+                HorizontalDivider()
+                Spacer(Modifier.height(8.dp))
+                Text("Historial de gestiones (${ui.gestiones.size})", style = MaterialTheme.typography.titleMedium)
+            }
+
+            if (ui.gestiones.isEmpty()) {
+                item {
+                    Text(
+                        "Aún no hay gestiones registradas con esta organización.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                items(ui.gestiones, key = { it.idSeguimiento }) { gestion ->
+                    GestionCard(gestion)
+                }
+            }
         }
     }
 }
@@ -219,6 +245,12 @@ private fun ContactoCard(contacto: Contacto, onEditar: () -> Unit) {
                 Text(contacto.correo, style = MaterialTheme.typography.bodySmall)
                 // Teléfono (tamaño pequeño)
                 Text(contacto.telefono, style = MaterialTheme.typography.bodySmall)
+                // Medio por el que la persona prefiere ser contactada (HU-13)
+                Text(
+                    "Contacto preferente: ${contacto.medioPreferente}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
             // Botón de editar: ícono de lápiz.
             // Al presionar: onEditar() → onEditarContacto(idOrg, idContacto) → navega al formulario.
@@ -226,6 +258,24 @@ private fun ContactoCard(contacto: Contacto, onEditar: () -> Unit) {
             IconButton(onClick = onEditar) {
                 Icon(Icons.Default.Edit, contentDescription = "Editar contacto")
             }
+        }
+    }
+}
+// Tarjeta de una gestión previa con la organización: qué se hizo, en qué oportunidad, con quién y quién la registró.
+@Composable
+private fun GestionCard(gestion: GestionOrganizacion) {
+    Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(gestion.tipoAccion, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Text(gestion.fechaHora.comoFechaHora(), style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(4.dp))
+            Text("Oportunidad: ${gestion.nombreOportunidad}", style = MaterialTheme.typography.bodyMedium)
+            gestion.nombreContacto?.let {
+                Text("Contacto: $it", style = MaterialTheme.typography.bodyMedium)
+            }
+            Text("Registrada por: ${gestion.autor}", style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(4.dp))
+            Text(gestion.resultado, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

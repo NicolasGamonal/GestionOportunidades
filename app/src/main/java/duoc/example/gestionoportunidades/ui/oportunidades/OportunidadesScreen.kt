@@ -14,9 +14,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import duoc.example.gestionoportunidades.model.Oportunidad
+import duoc.example.gestionoportunidades.ui.auth.SesionManager
 import duoc.example.gestionoportunidades.ui.components.PanelFiltrosAnimado
 import duoc.example.gestionoportunidades.ui.components.StatusChip
 import duoc.example.gestionoportunidades.ui.components.TarjetaOportunidad
+import duoc.example.gestionoportunidades.util.Permisos
 import duoc.example.gestionoportunidades.util.comoFechaHora
 
 // OportunidadesScreen: lista principal de oportunidades (pestaña "Oportunidades" del menú inferior).
@@ -82,6 +84,9 @@ fun OportunidadesScreen(
     // Se actualiza en cada tecla del campo de búsqueda y en cada selección de chip.
     // El ViewModel usa estos filtros para re-ejecutar la query del DAO (flatMapLatest con debounce).
     val filtros by viewModel.filtros.collectAsStateWithLifecycle()
+
+    // Ejecutivos del equipo para el filtro "Responsable" (solo lo muestra el supervisor)
+    val ejecutivos by viewModel.ejecutivos.collectAsStateWithLifecycle()
 
     // Estado LOCAL: si el panel de filtros está visible o no.
     // No va en el UiState del ViewModel porque es un detalle visual efímero
@@ -155,10 +160,17 @@ fun OportunidadesScreen(
             item {
                 PanelFiltrosAnimado(
                     visible = mostrarFiltros,
-                    estadoSeleccionado = filtros.estado,
-                    prioridadSeleccionada = filtros.prioridad,
+                    filtros = filtros,
+                    ejecutivos = ejecutivos,
+                    mostrarResponsable = SesionManager.getRol() == "SUPERVISOR",
                     onEstadoChange = viewModel::onEstadoChange,
                     onPrioridadChange = viewModel::onPrioridadChange,
+                    onTipoEventoChange = viewModel::onTipoEventoChange,
+                    onRegionChange = viewModel::onRegionChange,
+                    onComunaChange = viewModel::onComunaChange,
+                    onResponsableChange = viewModel::onResponsableChange,
+                    onFechaDesdeChange = viewModel::onFechaDesdeChange,
+                    onFechaHastaChange = viewModel::onFechaHastaChange,
                     onLimpiar = viewModel::limpiarFiltros
                 )
             }
@@ -207,11 +219,13 @@ fun OportunidadesScreen(
         // - padding(16.dp): margen desde los bordes de la pantalla.
         // - Flota SOBRE la lista (no ocupa espacio en el LazyColumn, por eso el Box).
         // - Al presionar: onNueva() → navega al formulario de creación.
-        ExtendedFloatingActionButton(
-            onClick = onNueva,
-            icon = { Icon(Icons.Default.Add, contentDescription = null) },
-            text = { Text("Nueva") },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
-        )
+        if (Permisos.puedeGestionarOportunidades(SesionManager.getRol())) {
+            ExtendedFloatingActionButton(
+                onClick = onNueva,
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text("Nueva") },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+            )
+        }
     }
 }

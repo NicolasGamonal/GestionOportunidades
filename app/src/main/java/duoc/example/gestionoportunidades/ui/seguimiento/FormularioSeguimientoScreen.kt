@@ -1,5 +1,10 @@
 package duoc.example.gestionoportunidades.ui.seguimiento
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -7,9 +12,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import duoc.example.gestionoportunidades.ui.components.*
@@ -28,6 +36,23 @@ fun FormularioSeguimientoScreen(
     onCancelar: () -> Unit     // Volver sin guardar
 ) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // HU-21: en Android 13+ las notificaciones requieren permiso. Se pide al abrir este formulario,
+    // que es justo donde se programan los recordatorios. Si el usuario lo rechaza, la app sigue
+    // funcionando igual, solo que sin avisos.
+    val contexto = LocalContext.current
+    val pedirPermisoNotificaciones = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* No hace falta reaccionar: si no se concede, simplemente no habrá notificaciones */ }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(contexto, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            pedirPermisoNotificaciones.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     FormularioContenedor(
         guardadoExitoso = ui.guardadoExitoso,

@@ -90,7 +90,7 @@ fun TarjetaOportunidad(
             // onSurfaceVariant: color secundario (gris) para jerarquía visual
             // (el nombre es más importante que la prioridad).
             Text(
-                text = "Prioridad ${oportunidad.prioridad} · ${oportunidad.comuna}",
+                text = "Prioridad ${oportunidad.prioridad} · Potencial ${oportunidad.potencialComercial} · ${oportunidad.comuna}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -20,7 +20,9 @@ package duoc.example.gestionoportunidades.util
 // ---------------------------------------------------------------------------
 
 enum class CampoOportunidad {
-    NOMBRE, TIPO, ORGANIZACION, DETECCION, INICIO, TERMINO, COMUNA, PUBLICO, COSTO, OBSERVACIONES
+    NOMBRE, TIPO, ORGANIZACION, DETECCION, INICIO, TERMINO, COMUNA, PUBLICO, COSTO, OBSERVACIONES,
+    // Campos agregados para las historias HU-03, HU-08, HU-10 y HU-11
+    DESCRIPCION, FUENTE, HORA_TERMINO, PUBLICO_OBJETIVO, CONDICIONES, REQUISITOS, ESPACIOS
 }
 
 enum class CampoOrganizacion { NOMBRE, TIPO, RUBRO, COMUNA }
@@ -28,6 +30,9 @@ enum class CampoOrganizacion { NOMBRE, TIPO, RUBRO, COMUNA }
 enum class CampoContacto { NOMBRE, CARGO, AREA, CORREO, TELEFONO }
 
 enum class CampoSeguimiento { TIPO, RESULTADO, PROXIMA_ACCION, FECHA_PROXIMA }
+
+// Resultado de una activación (HU-24)
+enum class CampoResultado { ASISTENTES, CONTACTOS, INSCRIPCIONES, APRENDIZAJES }
 
 // Convierte la lista de (campo, error?) en un mapa que solo contiene los campos con error.
 // Si el mapa queda vacío -> el formulario es válido.
@@ -43,8 +48,11 @@ object ValidacionesFormularios {
     private const val NOMBRE_CONTACTO_MAX = 60
     private const val CARGO_MAX = 60
     private const val RUBRO_MAX = 50
-    private const val COMUNA_MAX = 40
     private const val OBSERVACIONES_MAX = 500
+    private const val DESCRIPCION_MAX = 500
+    private const val FUENTE_MAX = 100
+    private const val PUBLICO_OBJETIVO_MAX = 150
+    private const val TEXTO_LARGO_MAX = 500   // condiciones, requisitos y aprendizajes
     private const val RESULTADO_MIN = 5
     private const val RESULTADO_MAX = 300
     private const val PROXIMA_ACCION_MAX = 120
@@ -72,10 +80,18 @@ object ValidacionesFormularios {
         fechaDeteccion: String,
         fechaInicio: String,
         fechaTermino: String,
+        horaInicio: String,
+        horaTermino: String,
         comuna: String,
         publicoEsperado: String,
         costoReferencial: String,
-        observaciones: String
+        observaciones: String,
+        descripcion: String,
+        fuenteInformacion: String,
+        publicoObjetivo: String,
+        condicionesParticipacion: String,
+        requisitos: String,
+        espaciosDisponibles: String
     ): Map<CampoOportunidad, String> = listOf<Pair<CampoOportunidad, String?>>(
         CampoOportunidad.NOMBRE to (
                 Validaciones.validarObligatorio(nombre, "El nombre")
@@ -93,14 +109,40 @@ object ValidacionesFormularios {
                 Validaciones.validarFecha(fechaTermino, "La fecha de término")
                     ?: Validaciones.validarFechaTerminoDespuesInicio(fechaInicio, fechaTermino)
                 ),
-        CampoOportunidad.COMUNA to (
-                Validaciones.validarObligatorio(comuna, "La comuna")
-                    ?: Validaciones.validarLongitudMax(comuna, COMUNA_MAX, "La comuna")
-                ),
+        // Si el evento es de un solo día, la hora de término debe ser posterior a la de inicio.
+        CampoOportunidad.HORA_TERMINO to validarHorario(fechaInicio, fechaTermino, horaInicio, horaTermino),
+        CampoOportunidad.COMUNA to validarComuna(comuna),
         CampoOportunidad.PUBLICO to Validaciones.validarNumeroPositivo(publicoEsperado, "El público esperado"),
         CampoOportunidad.COSTO to Validaciones.validarNumeroNoNegativo(costoReferencial, "El costo referencial"),
-        CampoOportunidad.OBSERVACIONES to Validaciones.validarLongitudMax(observaciones, OBSERVACIONES_MAX, "Las observaciones")
+        CampoOportunidad.OBSERVACIONES to Validaciones.validarLongitudMax(observaciones, OBSERVACIONES_MAX, "Las observaciones"),
+        // La descripción es opcional (solo se limita su largo); la fuente es obligatoria (HU-03).
+        CampoOportunidad.DESCRIPCION to Validaciones.validarLongitudMax(descripcion, DESCRIPCION_MAX, "La descripción"),
+        CampoOportunidad.FUENTE to (
+                Validaciones.validarObligatorio(fuenteInformacion, "La fuente de información")
+                    ?: Validaciones.validarLongitudMax(fuenteInformacion, FUENTE_MAX, "La fuente de información")
+                ),
+        CampoOportunidad.PUBLICO_OBJETIVO to (
+                Validaciones.validarObligatorio(publicoObjetivo, "El público objetivo")
+                    ?: Validaciones.validarLongitudMax(publicoObjetivo, PUBLICO_OBJETIVO_MAX, "El público objetivo")
+                ),
+        CampoOportunidad.CONDICIONES to Validaciones.validarLongitudMax(condicionesParticipacion, TEXTO_LARGO_MAX, "Las condiciones"),
+        CampoOportunidad.REQUISITOS to Validaciones.validarLongitudMax(requisitos, TEXTO_LARGO_MAX, "Los requisitos"),
+        CampoOportunidad.ESPACIOS to Validaciones.validarNumeroNoNegativo(espaciosDisponibles, "Los espacios disponibles")
     ).soloErrores()
+
+    // La comuna debe ser obligatoria y pertenecer al catálogo de comunas de Chile (util/Regiones.kt).
+    // El paréntesis en "a ?: if (...) null else ..." es necesario para que Kotlin lo interprete bien.
+    private fun validarComuna(comuna: String): String? =
+        Validaciones.validarObligatorio(comuna, "La comuna")
+            ?: (if (Regiones.esComunaValida(comuna)) null else "Selecciona una comuna de la lista")
+
+    // Compara las horas solo cuando el evento empieza y termina el mismo día.
+    private fun validarHorario(fechaInicio: String, fechaTermino: String, horaInicio: String, horaTermino: String): String? {
+        if (fechaInicio.isBlank() || fechaInicio != fechaTermino) return null
+        val inicio = horaInicio.comoHoraOrNull() ?: return "La hora de inicio no es válida"
+        val termino = horaTermino.comoHoraOrNull() ?: return "La hora de término no es válida"
+        return if (!termino.isAfter(inicio)) "La hora de término debe ser posterior a la de inicio" else null
+    }
 
     // -----------------------------------------------------------------------
     // Organización
@@ -122,10 +164,7 @@ object ValidacionesFormularios {
                 Validaciones.validarObligatorio(rubro, "El rubro")
                     ?: Validaciones.validarLongitudMax(rubro, RUBRO_MAX, "El rubro")
                 ),
-        CampoOrganizacion.COMUNA to (
-                Validaciones.validarObligatorio(comuna, "La comuna")
-                    ?: Validaciones.validarLongitudMax(comuna, COMUNA_MAX, "La comuna")
-                )
+        CampoOrganizacion.COMUNA to validarComuna(comuna)
     ).soloErrores()
 
     // -----------------------------------------------------------------------
@@ -179,6 +218,25 @@ object ValidacionesFormularios {
         CampoSeguimiento.FECHA_PROXIMA to (
                 Validaciones.validarFecha(fechaProximo, "La fecha del próximo seguimiento")
                     ?: Validaciones.validarProximoSeguimiento(hoy, fechaProximo)
+                )
+    ).soloErrores()
+
+    // -----------------------------------------------------------------------
+    // Resultado de una activación (HU-24)
+    // -----------------------------------------------------------------------
+    // La evaluación (1 a 5) se elige con chips y siempre tiene un valor, por eso no se valida aquí.
+    fun validarResultado(
+        asistentes: String,
+        contactosGenerados: String,
+        inscripciones: String,
+        aprendizajes: String
+    ): Map<CampoResultado, String> = listOf<Pair<CampoResultado, String?>>(
+        CampoResultado.ASISTENTES to Validaciones.validarNumeroNoNegativo(asistentes, "Los asistentes"),
+        CampoResultado.CONTACTOS to Validaciones.validarNumeroNoNegativo(contactosGenerados, "Los contactos generados"),
+        CampoResultado.INSCRIPCIONES to Validaciones.validarNumeroNoNegativo(inscripciones, "Las inscripciones"),
+        CampoResultado.APRENDIZAJES to (
+                Validaciones.validarObligatorio(aprendizajes, "Los aprendizajes")
+                    ?: Validaciones.validarLongitudMax(aprendizajes, TEXTO_LARGO_MAX, "Los aprendizajes")
                 )
     ).soloErrores()
 }

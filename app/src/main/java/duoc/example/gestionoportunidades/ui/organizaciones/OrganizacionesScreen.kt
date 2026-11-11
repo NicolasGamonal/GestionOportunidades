@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import duoc.example.gestionoportunidades.model.Organizacion
+import duoc.example.gestionoportunidades.util.Regiones
 
 // Lista de organizaciones (pestaña "Organizaciones" del menú inferior).
 // Búsqueda por nombre + lista de tarjetas + botón "Nueva".
@@ -107,7 +108,7 @@ private fun OrganizacionCard(organizacion: Organizacion, onClick: () -> Unit) {
             )
             // Comuna
             Text(
-                text = organizacion.comuna,
+                text = organizacion.comuna + (Regiones.regionDe(organizacion.comuna)?.let { " · $it" } ?: ""),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

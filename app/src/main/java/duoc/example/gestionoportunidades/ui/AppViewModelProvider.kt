@@ -9,6 +9,7 @@ import duoc.example.gestionoportunidades.ui.alertas.DashboardViewModel
 import duoc.example.gestionoportunidades.ui.auth.AuthViewModel
 import duoc.example.gestionoportunidades.ui.supervisor.SupervisorViewModel
 import androidx.lifecycle.createSavedStateHandle
+import duoc.example.gestionoportunidades.ui.notas.NotasMarketingViewModel
 import duoc.example.gestionoportunidades.ui.oportunidades.DetalleOportunidadViewModel
 import duoc.example.gestionoportunidades.ui.oportunidades.FormularioOportunidadViewModel
 import duoc.example.gestionoportunidades.ui.oportunidades.OportunidadesViewModel
@@ -16,6 +17,7 @@ import duoc.example.gestionoportunidades.ui.organizaciones.DetalleOrganizacionVi
 import duoc.example.gestionoportunidades.ui.organizaciones.FormularioContactoViewModel
 import duoc.example.gestionoportunidades.ui.organizaciones.FormularioOrganizacionViewModel
 import duoc.example.gestionoportunidades.ui.organizaciones.OrganizacionesViewModel
+import duoc.example.gestionoportunidades.ui.resultados.FormularioResultadoViewModel
 import duoc.example.gestionoportunidades.ui.seguimiento.FormularioSeguimientoViewModel
 import duoc.example.gestionoportunidades.ui.seguimiento.HistorialSeguimientoViewModel
 
@@ -38,14 +40,20 @@ object AppViewModelProvider {
                 app().container.authRepository
             )
         }
-        initializer { OportunidadesViewModel(app().container.oportunidadRepository) }
+        initializer {
+            OportunidadesViewModel(
+                app().container.oportunidadRepository,
+                app().container.authRepository
+            )
+        }
         initializer {
             DetalleOportunidadViewModel(
                 createSavedStateHandle(),
                 app().container.oportunidadRepository,
                 app().container.organizacionRepository,
                 app().container.authRepository,
-                app().container.evidenciaRepository
+                app().container.evidenciaRepository,
+                app().container.resultadoRepository
             )
         }
         initializer {
@@ -60,7 +68,8 @@ object AppViewModelProvider {
             DetalleOrganizacionViewModel(
                 createSavedStateHandle(),
                 app().container.organizacionRepository,
-                app().container.contactoRepository
+                app().container.contactoRepository,
+                app().container.seguimientoRepository
             )
         }
         initializer {
@@ -83,11 +92,25 @@ object AppViewModelProvider {
             )
         }
         initializer {
+            FormularioResultadoViewModel(
+                createSavedStateHandle(),
+                app().container.oportunidadRepository,
+                app().container.resultadoRepository
+            )
+        }
+        initializer {
             FormularioSeguimientoViewModel(
                 createSavedStateHandle(),
                 app().container.seguimientoRepository,
                 app().container.oportunidadRepository,
-                app().container.contactoRepository
+                app().container.contactoRepository,
+                app()   // Application como Context: se usa para programar recordatorios (HU-21)
+            )
+        }
+        initializer {
+            NotasMarketingViewModel(
+                createSavedStateHandle(),
+                app().container.notaRepository
             )
         }
     }

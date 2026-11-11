@@ -7,8 +7,10 @@ import duoc.example.gestionoportunidades.data.repository.AuthRepository
 import duoc.example.gestionoportunidades.data.repository.EvidenciaRepository
 import duoc.example.gestionoportunidades.data.repository.OportunidadRepository
 import duoc.example.gestionoportunidades.data.repository.OrganizacionRepository
+import duoc.example.gestionoportunidades.data.repository.ResultadoActivacionRepository
 import duoc.example.gestionoportunidades.model.Evidencia
 import duoc.example.gestionoportunidades.model.Oportunidad
+import duoc.example.gestionoportunidades.model.ResultadoActivacion
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
 import duoc.example.gestionoportunidades.util.Estados
 import duoc.example.gestionoportunidades.util.Permisos
@@ -55,6 +57,10 @@ data class DetalleUiState(
     val estadosPermitidos: List<String> = emptyList(),
     // Fotos asociadas a esta oportunidad (se actualiza en tiempo real vía Flow)
     val evidencias: List<Evidencia> = emptyList(),
+    // Resultado real de la activación (HU-24): null si todavía no se registra.
+    val resultado: ResultadoActivacion? = null,
+    // true si el usuario puede registrar/editar el resultado (oportunidad Confirmada y con acceso).
+    val puedeRegistrarResultado: Boolean = false,
     // true si el usuario no tiene permiso para ver esta oportunidad (ejecutivo viendo la de otro)
     val sinAcceso: Boolean = false,
     // Mensaje de éxito temporal (ej: "Estado actualizado a: Contacto realizado")
@@ -89,7 +95,10 @@ class DetalleOportunidadViewModel(
     authRepository: AuthRepository,
 
     // Repositorio de evidencias: para observar, registrar y eliminar fotos.
-    private val evidenciaRepository: EvidenciaRepository
+    private val evidenciaRepository: EvidenciaRepository,
+
+    // Resultado de la activación (HU-24)
+    resultadoRepository: ResultadoActivacionRepository
 ) : ViewModel() {
 
     // El id de la oportunidad a mostrar. Se extrae de la ruta de navegación.
@@ -132,7 +141,7 @@ class DetalleOportunidadViewModel(
         //   - Ejecutivo → solo si idResponsable == su idUsuario
         val usuario = SesionManager.usuarioActual
         if (usuario == null ||
-            !Permisos.puedeVerOportunidad(usuario.rol, usuario.idUsuario, op.idResponsable)
+            !Permisos.puedeVerOportunidad(usuario.rol, usuario.idUsuario, op.idResponsable, op.estado)
         ) {
             // Sin permiso: se muestra el mensaje de "No tienes permiso" en la Screen
             return@map DetalleUiState(sinAcceso = true, isLoading = false)
@@ -141,6 +150,9 @@ class DetalleOportunidadViewModel(
         // Caso normal: construir el estado completo
         DetalleUiState(
             oportunidad = op,
+            puedeRegistrarResultado = Permisos.puedeRegistrarResultado(
+                usuario.rol, usuario.idUsuario, op.idResponsable, op.estado
+            ),
             // Resolver el nombre de la organización desde el FK.
             // obtenerPorId es suspend (consulta puntual a Room).
             // Si no existe (no debería pasar por la FK CASCADE) → "Sin organización".
@@ -178,10 +190,11 @@ class DetalleOportunidadViewModel(
     val uiState: StateFlow<DetalleUiState> = combine(
         datos,
         evidenciaRepository.observarPorOportunidad(idOportunidad),
+        resultadoRepository.observarPorOportunidad(idOportunidad),
         _mensajes
-    ) { d, evidencias, m ->
-        // Toma el estado de datos y le agrega las evidencias y los mensajes
-        d.copy(evidencias = evidencias, mensajeExito = m.exito, mensajeError = m.error)
+    ) { d, evidencias, resultado, m ->
+        // Toma el estado de datos y le agrega evidencias, resultado de la activación y mensajes
+        d.copy(evidencias = evidencias, resultado = resultado, mensajeExito = m.exito, mensajeError = m.error)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetalleUiState())
 
     // Cambia el estado de la oportunidad.

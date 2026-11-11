@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Recordatorios locales de seguimientos (HU-21). En Android 13+ se pide en tiempo de ejecución. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <application
         android:allowBackup="true"
@@ -27,6 +29,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Recibe la alarma programada para un seguimiento y muestra la notificación (HU-21). -->
+        <receiver
+            android:name=".util.RecordatorioReceiver"
+            android:exported="false" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="duoc.example.gestionoportunidades.fileprovider"

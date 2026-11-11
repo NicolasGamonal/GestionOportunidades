@@ -10,6 +10,8 @@ import duoc.example.gestionoportunidades.model.Organizacion
 import duoc.example.gestionoportunidades.model.Contacto
 import duoc.example.gestionoportunidades.model.Oportunidad
 import duoc.example.gestionoportunidades.model.Seguimiento
+import duoc.example.gestionoportunidades.model.ResultadoActivacion
+import duoc.example.gestionoportunidades.data.local.dao.ResultadoActivacionDao
 import duoc.example.gestionoportunidades.data.local.dao.UsuarioDao
 import duoc.example.gestionoportunidades.data.local.dao.OrganizacionDao
 import duoc.example.gestionoportunidades.data.local.dao.ContactoDao
@@ -17,6 +19,8 @@ import duoc.example.gestionoportunidades.data.local.dao.EvidenciaDao
 import duoc.example.gestionoportunidades.data.local.dao.OportunidadDao
 import duoc.example.gestionoportunidades.data.local.dao.SeguimientoDao
 import androidx.sqlite.db.SupportSQLiteDatabase
+import duoc.example.gestionoportunidades.data.local.dao.NotaMarketingDao
+import duoc.example.gestionoportunidades.model.NotaMarketing
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -37,25 +41,30 @@ import kotlinx.coroutines.launch
 // Porque Room genera la implementación en tiempo de compilación (con KSP).
 // Tú solo defines la interfaz (qué DAOs expone); Room crea la clase concreta.
 @Database(
-    // Las 6 tablas de la base de datos (modelo 3FN):
+    // Las 7 tablas de la base de datos (modelo 3FN):
     // - Usuario: cuentas de login (4 ficticias)
     // - Organizacion: empresas, municipalidades, instituciones
     // - Contacto: personas de contacto dentro de cada organización
     // - Oportunidad: eventos corporativos a gestionar (la entidad central)
     // - Seguimiento: historial de gestiones y cambios de estado
     // - Evidencia: fotos capturadas con la cámara, asociadas a una oportunidad
+    // - ResultadoActivacion: resultado real de un evento en el que se participó (HU-24)
     entities = [
         Usuario::class,
         Organizacion::class,
         Contacto::class,
         Oportunidad::class,
         Seguimiento::class,
-        Evidencia::class
+        Evidencia::class,
+        ResultadoActivacion::class,
+        NotaMarketing::class
+
     ],
     // Versión actual de la base. Si se agrega o modifica una entidad en el futuro,
     // hay que incrementarla y agregar una Migration (o usar fallbackToDestructiveMigration
     // que borra y recrea la base, perdiendo datos).
-    version = 2,
+    // Versión 5: se agregaron campos a Oportunidad, Contacto y Usuario, y la tabla resultados_activacion.
+    version = 6,
     // exportSchema = false: no genera archivos .json del esquema en build/outputs/schemas.
     // En producción se recomienda true (para pruebas con MigrationTestHelper),
     // pero para un proyecto académico no es necesario.
@@ -72,6 +81,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun oportunidadDao(): OportunidadDao
     abstract fun seguimientoDao(): SeguimientoDao
     abstract fun evidenciaDao(): EvidenciaDao
+    abstract fun resultadoActivacionDao(): ResultadoActivacionDao
+    abstract fun notaMarketingDao(): NotaMarketingDao
 
     companion object {
         // Instancia única de la base de datos (patrón Singleton).
@@ -160,18 +171,24 @@ abstract class AppDatabase : RoomDatabase() {
             // Contraseñas simples para prueba (el checklist no pide cifrado).
             // El rol se usa en Permisos.kt para restringir acciones por tipo de usuario.
             db.usuarioDao().insertarUsuarioSync(
-                Usuario(idUsuario = 1, username = "ejecutivo1", contrasena = "123456", nombreCompleto = "Juan Pérez", rol = "EJECUTIVO")
+                Usuario(idUsuario = 1, username = "ejecutivo1", contrasena = "123456", nombreCompleto = "Juan Pérez", rol = "EJECUTIVO", area = "Convenios Dentales", zona = "Zona Oriente")
             )
             db.usuarioDao().insertarUsuarioSync(
-                Usuario(idUsuario = 2, username = "ejecutivo2", contrasena = "123456", nombreCompleto = "María José", rol = "EJECUTIVO")
+                Usuario(idUsuario = 2, username = "ejecutivo2", contrasena = "123456", nombreCompleto = "María José", rol = "EJECUTIVO", area = "Convenios Automotrices", zona = "Zona Poniente")
             )
             db.usuarioDao().insertarUsuarioSync(
-                Usuario(idUsuario = 3, username = "ejecutivo3", contrasena = "123456", nombreCompleto = "Diego Silva", rol = "EJECUTIVO")
+                Usuario(idUsuario = 3, username = "ejecutivo3", contrasena = "123456", nombreCompleto = "Diego Silva", rol = "EJECUTIVO", area = "Convenios Veterinarios", zona = "Zona Sur")
             )
             db.usuarioDao().insertarUsuarioSync(
-                Usuario(idUsuario = 4, username = "supervisor1", contrasena = "admin123", nombreCompleto = "Carlos Mendoza", rol = "SUPERVISOR")
+                Usuario(idUsuario = 4, username = "supervisor1", contrasena = "admin123", nombreCompleto = "Carlos Mendoza", rol = "SUPERVISOR", area = "Gerencia Comercial", zona = "Región Metropolitana")
             )
-
+            db.usuarioDao().insertarUsuarioSync(
+                Usuario(
+                    idUsuario = 5, username = "marketing1", contrasena = "marketing123",
+                    nombreCompleto = "Camila Rojas", rol = "MARKETING",
+                    area = "Marketing y Comunicaciones", zona = "Región Metropolitana"
+                )
+            )
             // --- ORGANIZACIONES (4 entidades ficticias de distintos tipos) ---
             // Cada una tiene un tipo diferente para cubrir los casos del checklist:
             // municipalidad, empresa privada, institución educativa, clínica.
@@ -180,13 +197,17 @@ abstract class AppDatabase : RoomDatabase() {
                 Organizacion(idOrganizacion = 1, nombre = "Municipalidad de Valle Verde", tipo = "Municipalidad", rubro = "Gobierno", comuna = "Providencia")
             )
             db.organizacionDao().insertarOrganizacion(
-                Organizacion(idOrganizacion = 2, nombre = "Empresa Logística Andina SpA", tipo = "Empresa privada", rubro = "Logística", comuna = "Maipú")
+                Organizacion(idOrganizacion = 2, nombre = "Empresa Logística Andina SpA", tipo = "Empresa", rubro = "Logística", comuna = "Maipú")
             )
             db.organizacionDao().insertarOrganizacion(
-                Organizacion(idOrganizacion = 3, nombre = "Colegio Los Aromos", tipo = "Institución educativa", rubro = "Educación", comuna = "Las Condes")
+                Organizacion(idOrganizacion = 3, nombre = "Colegio Los Aromos", tipo = "Institución privada", rubro = "Educación", comuna = "Las Condes")
             )
             db.organizacionDao().insertarOrganizacion(
-                Organizacion(idOrganizacion = 4, nombre = "Clínica Dental Sonrisa", tipo = "Empresa privada", rubro = "Salud", comuna = "Ñuñoa")
+                Organizacion(idOrganizacion = 4, nombre = "Clínica Dental Sonrisa", tipo = "Empresa", rubro = "Salud", comuna = "Ñuñoa")
+            )
+            // Organización sin contactos registrados: sirve para mostrar la alerta "sin contacto" (HU-20).
+            db.organizacionDao().insertarOrganizacion(
+                Organizacion(idOrganizacion = 5, nombre = "Cámara de Comercio de Antofagasta", tipo = "Asociación", rubro = "Comercio", comuna = "Antofagasta")
             )
 
             // --- CONTACTOS (uno por organización, con datos ficticios) ---
@@ -195,16 +216,16 @@ abstract class AppDatabase : RoomDatabase() {
             // sea evidente que no son números reales.
             // idOrganizacion (FK): cada contacto pertenece a una organización.
             db.contactoDao().insertarContacto(
-                Contacto(idContacto = 1, nombre = "Ana Rojas", cargo = "Directora de Eventos", area = "Comunicaciones", correo = "ana.rojas@munivv.cl", telefono = "+56912345678", idOrganizacion = 1)
+                Contacto(idContacto = 1, nombre = "Ana Rojas", cargo = "Directora de Eventos", area = "Comunicaciones", correo = "ana.rojas@munivv.cl", telefono = "+56912345678", idOrganizacion = 1, medioPreferente = "Correo")
             )
             db.contactoDao().insertarContacto(
-                Contacto(idContacto = 2, nombre = "Pedro Fuentes", cargo = "Gerente RRHH", area = "Recursos Humanos", correo = "pedro.fuentes@logandina.cl", telefono = "+56987654321", idOrganizacion = 2)
+                Contacto(idContacto = 2, nombre = "Pedro Fuentes", cargo = "Gerente RRHH", area = "Recursos Humanos", correo = "pedro.fuentes@logandina.cl", telefono = "+56987654321", idOrganizacion = 2, medioPreferente = "Teléfono")
             )
             db.contactoDao().insertarContacto(
-                Contacto(idContacto = 3, nombre = "Lucía Vargas", cargo = "Jefa de Administración", area = "Administración", correo = "lucia.vargas@colegioaromos.cl", telefono = "+56955551234", idOrganizacion = 3)
+                Contacto(idContacto = 3, nombre = "Lucía Vargas", cargo = "Jefa de Administración", area = "Administración", correo = "lucia.vargas@colegioaromos.cl", telefono = "+56955551234", idOrganizacion = 3, medioPreferente = "WhatsApp")
             )
             db.contactoDao().insertarContacto(
-                Contacto(idContacto = 4, nombre = "Roberto Díaz", cargo = "Director Comercial", area = "Comercial", correo = "roberto.diaz@clinicasonrisa.cl", telefono = "+56944445678", idOrganizacion = 4)
+                Contacto(idContacto = 4, nombre = "Roberto Díaz", cargo = "Director Comercial", area = "Comercial", correo = "roberto.diaz@clinicasonrisa.cl", telefono = "+56944445678", idOrganizacion = 4, medioPreferente = "Presencial")
             )
 
             // --- OPORTUNIDADES (6, una por cada estado del flujo) ---
@@ -230,7 +251,7 @@ abstract class AppDatabase : RoomDatabase() {
                 Oportunidad(
                     idOportunidad = 1,
                     nombre = "Feria del Emprendedor Valle Verde",
-                    tipoEvento = "Feria municipal",
+                    tipoEvento = "Actividad municipal",
                     fechaDeteccion = hoy - 3 * dia,
                     fechaInicio = hoy + 7 * dia,
                     fechaTermino = hoy + 9 * dia,
@@ -241,7 +262,15 @@ abstract class AppDatabase : RoomDatabase() {
                     costoReferencial = 850000.0,
                     observaciones = "Feria anual con alta concurrencia de familias",
                     idOrganizacion = 1,
-                    idResponsable = 1
+                    idResponsable = 1,
+                    descripcion = "Feria comunal con más de 80 stands de emprendedores y servicios municipales",
+                    fuenteInformacion = "Sitio web de la municipalidad",
+                    potencialComercial = "Alto",
+                    afinidad = "Alta",
+                    publicoObjetivo = "Familias y adultos mayores",
+                    condicionesParticipacion = "Stand de 3x3 m con inscripción previa",
+                    requisitos = "Patente comercial al día",
+                    espaciosDisponibles = 6
                 )
             )
             // Opp 2: Contacto realizado, Media prioridad, en 14 días, asignada a ejecutivo2
@@ -260,7 +289,15 @@ abstract class AppDatabase : RoomDatabase() {
                     costoReferencial = 420000.0,
                     observaciones = "Jornada interna para colaboradores",
                     idOrganizacion = 2,
-                    idResponsable = 2
+                    idResponsable = 2,
+                    descripcion = "Jornada interna de beneficios para trabajadores de la empresa",
+                    fuenteInformacion = "Contacto directo (RR.HH.)",
+                    potencialComercial = "Medio",
+                    afinidad = "Media",
+                    publicoObjetivo = "Trabajadores y sus familias",
+                    condicionesParticipacion = "Mesa de atención durante la jornada",
+                    requisitos = "Coordinar ingreso con portería",
+                    espaciosDisponibles = 2
                 )
             )
             // Opp 3: Propuesta enviada, Alta prioridad, en 30 días, asignada a ejecutivo3
@@ -279,7 +316,15 @@ abstract class AppDatabase : RoomDatabase() {
                     costoReferencial = 650000.0,
                     observaciones = "Actividad anual de fin de semestre",
                     idOrganizacion = 3,
-                    idResponsable = 3
+                    idResponsable = 3,
+                    descripcion = "Feria de fin de semestre abierta a apoderados",
+                    fuenteInformacion = "Redes sociales del colegio",
+                    potencialComercial = "Alto",
+                    afinidad = "Alta",
+                    publicoObjetivo = "Apoderados y docentes",
+                    condicionesParticipacion = "Cupos limitados, se asignan por orden de llegada",
+                    requisitos = "Carta de presentación de la agencia",
+                    espaciosDisponibles = 4
                 )
             )
             // Opp 4: En espera de respuesta, Baja prioridad, en 14 días, asignada a ejecutivo1
@@ -299,7 +344,15 @@ abstract class AppDatabase : RoomDatabase() {
                     costoReferencial = 300000.0,
                     observaciones = "Activación en sucursal principal",
                     idOrganizacion = 4,
-                    idResponsable = 1
+                    idResponsable = 1,
+                    descripcion = "Activación en la sucursal principal de la clínica",
+                    fuenteInformacion = "Referido por cliente",
+                    potencialComercial = "Bajo",
+                    afinidad = "Media",
+                    publicoObjetivo = "Pacientes de la clínica",
+                    condicionesParticipacion = "Uso del hall de entrada",
+                    requisitos = "Sin requisitos especiales",
+                    espaciosDisponibles = 1
                 )
             )
             // Opp 5: Confirmada (estado final), Alta prioridad, en 7 días, asignada a ejecutivo2
@@ -319,7 +372,15 @@ abstract class AppDatabase : RoomDatabase() {
                     costoReferencial = 1200000.0,
                     observaciones = "Feria con stands de servicios",
                     idOrganizacion = 2,
-                    idResponsable = 2
+                    idResponsable = 2,
+                    descripcion = "Feria empresarial con stands de servicios para trabajadores",
+                    fuenteInformacion = "Correo del organizador",
+                    potencialComercial = "Alto",
+                    afinidad = "Alta",
+                    publicoObjetivo = "Trabajadores de empresas de la zona",
+                    condicionesParticipacion = "Montaje desde las 7:00 hrs",
+                    requisitos = "Seguro de responsabilidad civil",
+                    espaciosDisponibles = 10
                 )
             )
             // Opp 6: Descartada (estado final), Media prioridad, en 30 días, asignada a ejecutivo3
@@ -339,7 +400,40 @@ abstract class AppDatabase : RoomDatabase() {
                     costoReferencial = 0.0,
                     observaciones = "No hubo presupuesto disponible",
                     idOrganizacion = 1,
-                    idResponsable = 3
+                    idResponsable = 3,
+                    descripcion = "Jornada municipal descartada por falta de presupuesto",
+                    fuenteInformacion = "Sitio web de la municipalidad",
+                    potencialComercial = "Bajo",
+                    afinidad = "Baja",
+                    publicoObjetivo = "Vecinos de la comuna",
+                    espaciosDisponibles = 0
+                )
+            )
+            // Oportunidad sin gestiones y cuya organización no tiene contactos (demo de HU-20).
+            db.oportunidadDao().insertarOportunidad(
+                Oportunidad(
+                    idOportunidad = 7,
+                    nombre = "Expo Minera Antofagasta",
+                    tipoEvento = "Feria empresarial",
+                    fechaDeteccion = hoy - 1 * dia,
+                    fechaInicio = hoy + 21 * dia,
+                    fechaTermino = hoy + 23 * dia,
+                    comuna = "Antofagasta",
+                    publicoEsperado = 4000,
+                    prioridad = "Media",
+                    estado = "Identificada",
+                    costoReferencial = 950000.0,
+                    observaciones = "Aún no se ha contactado a la organizadora",
+                    idOrganizacion = 5,
+                    idResponsable = 1,
+                    descripcion = "Exposición de proveedores y servicios para la industria minera",
+                    fuenteInformacion = "Noticia en prensa regional",
+                    potencialComercial = "Medio",
+                    afinidad = "Media",
+                    publicoObjetivo = "Trabajadores de la minería y sus familias",
+                    condicionesParticipacion = "Stand modular con inscripción anticipada",
+                    requisitos = "Certificado de empresa vigente",
+                    espaciosDisponibles = 8
                 )
             )
 
@@ -369,7 +463,7 @@ abstract class AppDatabase : RoomDatabase() {
             db.seguimientoDao().insertarSeguimiento(
                 Seguimiento(
                     idSeguimiento = 2,
-                    tipoAccion = "Email",
+                    tipoAccion = "Envío de propuesta",
                     fechaHora = hoy - 1 * dia,
                     resultado = "Enviada propuesta a Pedro Fuentes, esperando respuesta",
                     proximaAccion = "Seguimiento telefónico",

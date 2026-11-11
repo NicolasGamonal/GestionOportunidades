@@ -74,11 +74,12 @@ fun FormularioOrganizacionScreen(
                     error = ui.errores[CampoOrganizacion.RUBRO]
                 )
                 // Comuna (texto libre)
-                CampoFormulario(
-                    valor = ui.comuna,
-                    onValorChange = viewModel::onComunaChange,
-                    etiqueta = "Comuna",
-                    error = ui.errores[CampoOrganizacion.COMUNA]
+                // Región y comuna en dos desplegables encadenados (HU-12). En Room solo se guarda
+                // la comuna; la región se deriva de ella (util/Regiones.kt).
+                SelectorComuna(
+                    comuna = ui.comuna,
+                    error = ui.errores[CampoOrganizacion.COMUNA],
+                    onComunaChange = viewModel::onComunaChange
                 )
 
                 Spacer(Modifier.height(8.dp))

@@ -108,6 +108,14 @@ fun FormularioContactoScreen(
                     keyboardType = KeyboardType.Phone
                 )
 
+                // Medio por el que la persona prefiere que la contacten (HU-13)
+                SelectorChips(
+                    titulo = "Medio de contacto preferente",
+                    opciones = Catalogos.mediosContacto,
+                    seleccionada = ui.medioPreferente,
+                    onSeleccion = viewModel::onMedioChange
+                )
+
                 // Botones: guardar (con spinner) + cancelar
                 Spacer(Modifier.height(8.dp))
                 BotonesFormulario(

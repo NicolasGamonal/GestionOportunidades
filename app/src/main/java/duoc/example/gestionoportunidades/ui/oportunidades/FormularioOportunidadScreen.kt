@@ -14,6 +14,9 @@ import duoc.example.gestionoportunidades.ui.components.BotonEliminar
 import duoc.example.gestionoportunidades.ui.components.CampoDesplegable
 import duoc.example.gestionoportunidades.ui.components.CampoFecha
 import duoc.example.gestionoportunidades.ui.components.CampoFormulario
+import duoc.example.gestionoportunidades.ui.components.CampoHora
+import duoc.example.gestionoportunidades.ui.components.SelectorChips
+import duoc.example.gestionoportunidades.ui.components.SelectorComuna
 import duoc.example.gestionoportunidades.ui.components.FormularioContenedor
 import duoc.example.gestionoportunidades.ui.components.MensajeConfirmacion
 import duoc.example.gestionoportunidades.ui.components.PantallaMensaje
@@ -227,13 +230,30 @@ private fun ContenidoFormulario(
             onFechaElegida = viewModel::onTerminoChange
         )
 
-        // --- COMUNA ---
-        // Campo de texto libre (solo comuna, no región: decisión de 3FN).
-        CampoFormulario(
-            valor = ui.comuna,
-            onValorChange = viewModel::onComunaChange,
-            etiqueta = "Comuna",
-            error = errores[CampoOportunidad.COMUNA]
+        // --- HORARIO (HU-08) ---
+        // La hora se combina con la fecha al guardar. Si el evento dura un solo día, la hora de
+        // término debe ser posterior a la de inicio (el error se muestra en el campo de término).
+        CampoHora(
+            valor = ui.horaInicio,
+            etiqueta = "Hora de inicio",
+            error = null,
+            onHoraElegida = viewModel::onHoraInicioChange
+        )
+
+        CampoHora(
+            valor = ui.horaTermino,
+            etiqueta = "Hora de término",
+            error = errores[CampoOportunidad.HORA_TERMINO],
+            onHoraElegida = viewModel::onHoraTerminoChange
+        )
+
+        // --- REGIÓN Y COMUNA (HU-08) ---
+        // Dos desplegables encadenados. En Room solo se guarda la comuna; la región se deriva de ella
+        // (util/Regiones.kt), así se respeta la 3FN.
+        SelectorComuna(
+            comuna = ui.comuna,
+            error = errores[CampoOportunidad.COMUNA],
+            onComunaChange = viewModel::onComunaChange
         )
 
         // --- PÚBLICO ESPERADO ---
@@ -248,20 +268,35 @@ private fun ContenidoFormulario(
             keyboardType = KeyboardType.Number
         )
 
-        // --- PRIORIDAD ---
-        // Chips de selección (no es un dropdown porque son solo 3 opciones y se ven mejor como chips).
-        // Estados.prioridades = ["Alta", "Media", "Baja"]
-        // Es single-select: al tocar un chip, se deseleccionan los otros.
-        Text("Prioridad", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Estados.prioridades.forEach { prioridad ->
-                FilterChip(
-                    selected = ui.prioridad == prioridad,  // true si este chip está seleccionado
-                    onClick = { viewModel.onPrioridadChange(prioridad) },
-                    label = { Text(prioridad) }
-                )
-            }
-        }
+        // --- PÚBLICO OBJETIVO (HU-10) ---
+        CampoFormulario(
+            valor = ui.publicoObjetivo,
+            onValorChange = viewModel::onPublicoObjetivoChange,
+            etiqueta = "Público objetivo (ej: familias, trabajadores)",
+            error = errores[CampoOportunidad.PUBLICO_OBJETIVO]
+        )
+
+        // --- PRIORIDAD, POTENCIAL COMERCIAL Y AFINIDAD (HU-04 y HU-10) ---
+        // Chips de selección única. SelectorChips es el mismo componente para los tres: recibe las
+        // opciones, la seleccionada y qué hacer al tocar (ver ui/components/SelectoresFormulario.kt).
+        SelectorChips(
+            titulo = "Prioridad",
+            opciones = Estados.prioridades,
+            seleccionada = ui.prioridad,
+            onSeleccion = viewModel::onPrioridadChange
+        )
+        SelectorChips(
+            titulo = "Potencial comercial",
+            opciones = Catalogos.nivelesPotencial,
+            seleccionada = ui.potencialComercial,
+            onSeleccion = viewModel::onPotencialChange
+        )
+        SelectorChips(
+            titulo = "Afinidad con la agencia",
+            opciones = Catalogos.nivelesAfinidad,
+            seleccionada = ui.afinidad,
+            onSeleccion = viewModel::onAfinidadChange
+        )
 
         Spacer(Modifier.height(4.dp))
 
@@ -276,6 +311,51 @@ private fun ContenidoFormulario(
             etiqueta = "Costo referencial (CLP)",
             error = errores[CampoOportunidad.COSTO],
             keyboardType = KeyboardType.Number
+        )
+
+        // --- ESPACIOS DISPONIBLES (HU-11) ---
+        CampoFormulario(
+            valor = ui.espaciosDisponibles,
+            onValorChange = viewModel::onEspaciosChange,
+            etiqueta = "Espacios disponibles para la agencia",
+            error = errores[CampoOportunidad.ESPACIOS],
+            keyboardType = KeyboardType.Number
+        )
+
+        // --- DESCRIPCIÓN Y FUENTE (HU-03) ---
+        CampoFormulario(
+            valor = ui.descripcion,
+            onValorChange = viewModel::onDescripcionChange,
+            etiqueta = "Descripción del evento",
+            error = errores[CampoOportunidad.DESCRIPCION],
+            singleLine = false,
+            minLines = 3
+        )
+
+        CampoFormulario(
+            valor = ui.fuenteInformacion,
+            onValorChange = viewModel::onFuenteChange,
+            etiqueta = "Fuente de información (ej: sitio web, contacto directo)",
+            error = errores[CampoOportunidad.FUENTE]
+        )
+
+        // --- CONDICIONES Y REQUISITOS DE PARTICIPACIÓN (HU-11) ---
+        CampoFormulario(
+            valor = ui.condicionesParticipacion,
+            onValorChange = viewModel::onCondicionesChange,
+            etiqueta = "Condiciones de participación",
+            error = errores[CampoOportunidad.CONDICIONES],
+            singleLine = false,
+            minLines = 2
+        )
+
+        CampoFormulario(
+            valor = ui.requisitos,
+            onValorChange = viewModel::onRequisitosChange,
+            etiqueta = "Requisitos",
+            error = errores[CampoOportunidad.REQUISITOS],
+            singleLine = false,
+            minLines = 2
         )
 
         // --- OBSERVACIONES ---

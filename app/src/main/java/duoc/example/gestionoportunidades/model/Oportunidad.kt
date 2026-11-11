@@ -114,5 +114,32 @@ data class Oportunidad(
     // ES NULLABLE: una oportunidad puede existir sin responsable asignado todavía.
     // El supervisor la asigna o reasigna desde el panel.
     // Cuando es null, el ejecutivo no la ve en su lista (solo el supervisor la ve en "sin asignar").
-    val idResponsable: Long? = null
+    val idResponsable: Long? = null,
+
+    // --- Campos agregados para las historias HU-03, HU-04, HU-10 y HU-11 ---
+    // Todos tienen valor por defecto: así las semillas y las previews antiguas siguen compilando.
+
+    // Descripción libre del evento (HU-03).
+    val descripcion: String = "",
+
+    // De dónde se obtuvo la información: sitio web, redes sociales, contacto directo, etc. (HU-03).
+    val fuenteInformacion: String = "",
+
+    // Potencial comercial: "Alto", "Medio" o "Bajo" (HU-04). Ver Catalogos.nivelesPotencial.
+    val potencialComercial: String = "Medio",
+
+    // Afinidad del evento con la agencia: "Alta", "Media" o "Baja" (HU-10). Ver Catalogos.nivelesAfinidad.
+    val afinidad: String = "Media",
+
+    // A quién va dirigido el evento (ej: "Familias y adultos mayores") (HU-10).
+    val publicoObjetivo: String = "",
+
+    // Condiciones de participación (arriendo de stand, horarios de montaje, etc.) (HU-11).
+    val condicionesParticipacion: String = "",
+
+    // Requisitos para participar (permisos, documentos, etc.) (HU-11).
+    val requisitos: String = "",
+
+    // Cantidad de espacios (stands) disponibles para la agencia (HU-11).
+    val espaciosDisponibles: Int = 0
 )

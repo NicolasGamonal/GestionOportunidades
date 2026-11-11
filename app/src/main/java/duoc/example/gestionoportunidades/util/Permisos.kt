@@ -5,13 +5,27 @@ object Permisos {
     // --- Ver oportunidades ---
 
     /** El ejecutivo solo ve las suyas; el supervisor ve todas. */
-    fun puedeVerOportunidad(rol: String, idUsuario: Long, idResponsableOportunidad: Long?): Boolean {
+    fun puedeVerOportunidad(
+        rol: String,
+        idUsuario: Long,
+        idResponsableOportunidad: Long?,
+        estado: String = ""          // solo lo usa MARKETING
+    ): Boolean {
         return when (rol) {
             "SUPERVISOR" -> true
             "EJECUTIVO" -> idResponsableOportunidad == idUsuario
+            "MARKETING" -> estado == "Confirmada"   // solo ve oportunidades confirmadas
             else -> false
         }
     }
+
+    // Crear/editar oportunidades, evidencia fotográfica e historial de gestiones (HU-27: Marketing solo lee)
+    fun puedeGestionarOportunidades(rol: String): Boolean =
+        rol == "SUPERVISOR" || rol == "EJECUTIVO"
+
+    // Registrar material u observaciones de marketing (HU-27)
+    fun puedeRegistrarNotas(rol: String): Boolean =
+        rol == "MARKETING" || rol == "SUPERVISOR"
 
     // --- Cambiar estado ---
 
@@ -56,4 +70,13 @@ object Permisos {
 
     /** Las organizaciones son datos compartidos por todo el equipo: solo el supervisor las elimina. */
     fun puedeEliminarOrganizacion(rol: String): Boolean = rol == "SUPERVISOR"
+
+    // --- Resultado de la activación (HU-24) ---
+
+    /**
+     * Solo se registra el resultado de oportunidades Confirmadas (la agencia participó en el evento).
+     * Pueden hacerlo quienes ven la oportunidad: el ejecutivo responsable y el supervisor.
+     */
+    fun puedeRegistrarResultado(rol: String, idUsuario: Long, idResponsable: Long?, estado: String): Boolean =
+        estado == "Confirmada" && puedeVerOportunidad(rol, idUsuario, idResponsable)
 }

@@ -53,5 +53,9 @@ data class Contacto(
 
     val telefono: String,
 
-    val idOrganizacion: Long
+    val idOrganizacion: Long,
+
+    // Medio de contacto preferente de la persona: "Correo", "Teléfono", "WhatsApp" o "Presencial" (HU-13).
+    // Ver Catalogos.mediosContacto. Valor por defecto para no romper las semillas.
+    val medioPreferente: String = "Correo"
 )
