@@ -1,69 +1,231 @@
 package duoc.example.gestionoportunidades.data.repository
 
 import duoc.example.gestionoportunidades.data.local.AppDatabase
+import duoc.example.gestionoportunidades.data.remote.*
 import duoc.example.gestionoportunidades.model.AlertaSeguimiento
 import duoc.example.gestionoportunidades.model.GestionOrganizacion
 import duoc.example.gestionoportunidades.model.Seguimiento
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 
-// Repositorio de seguimientos (gestiones, llamadas, emails, reuniones, cambios de estado).
-// Capa intermedia entre los ViewModels (SeguimientoViewModel, DashboardViewModel, SupervisorViewModel)
-// y el DAO (SeguimientoDao).
-// El ViewModel llama a estas funciones sin saber que detrás hay Room/SQLite.
-//
-// Este repositorio no tiene reglas de negocio complejas (a diferencia de OportunidadRepository
-// o OrganizacionRepository): solo expone las consultas del DAO directamente.
-// La lógica de negocio (qué se puede borrar, qué se puede cambiar) vive en los ViewModels
-// y en Permisos.kt, no aquí.
 class SeguimientoRepository(private val db: AppDatabase) {
 
-    // Referencia al DAO de seguimientos. Se obtiene una sola vez al construir el repositorio.
-    private val dao = db.seguimientoDao()
+    private val api: ApiService = RetrofitClient.apiService
+    private val zonaHoraria = ZoneId.systemDefault()
 
-    // Devuelve el historial completo de una oportunidad (todas sus gestiones y cambios de estado),
-    // ordenado de más reciente a más antiguo.
-    // Flow: si se agrega una nueva gestión, la lista del historial se actualiza sola.
-    // Se usa en la pantalla de detalle de oportunidad, sección "Historial".
-    fun obtenerHistorial(idOportunidad: Long): Flow<List<Seguimiento>> = dao.obtenerHistorialPorOportunidad(idOportunidad)
+    // --- Helpers de Fecha ---
+    private fun String?.toDateTimeMillis(): Long {
+        if (this.isNullOrBlank()) return System.currentTimeMillis()
+        return try {
+            LocalDateTime.parse(this.take(19))
+                .atZone(zonaHoraria)
+                .toInstant()
+                .toEpochMilli()
+        } catch (e: Exception) {
+            try {
+                LocalDate.parse(this.take(10))
+                    .atStartOfDay(zonaHoraria)
+                    .toInstant()
+                    .toEpochMilli()
+            } catch (_: Exception) {
+                System.currentTimeMillis()
+            }
+        }
+    }
 
-    // Devuelve los seguimientos que están ATRASADOS: su fechaProximo ya pasó
-    // y no son cambios de estado (solo gestiones reales).
-    // Se usa en el Dashboard para la sección "Gestiones atrasadas" (alerta roja).
-    // fechaActual: se pasa System.currentTimeMillis() desde el ViewModel.
-    fun obtenerAtrasados(fechaActual: Long): Flow<List<Seguimiento>> = dao.obtenerSeguimientosAtrasados(fechaActual)
+    private fun String?.toDateMillis(): Long {
+        if (this.isNullOrBlank()) return System.currentTimeMillis()
+        return try {
+            LocalDate.parse(this.take(10))
+                .atStartOfDay(zonaHoraria)
+                .toInstant()
+                .toEpochMilli()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
+    }
 
-    // Devuelve los seguimientos PENDIENTES de un usuario: su fechaProximo es hoy o en el futuro.
-    // Se usa en el Dashboard para la sección "Seguimientos pendientes" (próximas gestiones a hacer).
-    // Ordenados por fechaProximo ASC (los más urgentes primero).
-    // idUsuario: el ejecutivo logueado; el supervisor puede pasar 0 si se adapta la query.
-    fun obtenerPendientesPorUsuario(idUsuario: Long, fechaActual: Long): Flow<List<Seguimiento>> =
-        dao.obtenerPendientesPorUsuario(idUsuario, fechaActual)
+    private fun Long.toIsoDate(): String {
+        return Instant.ofEpochMilli(this)
+            .atZone(zonaHoraria)
+            .toLocalDate()
+            .toString()
+    }
 
-    // Devuelve todos los seguimientos registrados por un usuario (histórico completo).
-    // Se usa en el panel del supervisor para ver la actividad de un ejecutivo
-    // (cuántas gestiones hizo, de qué tipo, cuándo).
-    fun obtenerPorUsuario(idUsuario: Long): Flow<List<Seguimiento>> = dao.obtenerPorUsuario(idUsuario)
+    // --- Conversión Remote -> Local Model ---
+    private fun SeguimientoRemote.toLocalModel(): Seguimiento {
+        return Seguimiento(
+            idSeguimiento = this.id ?: 0L,
+            idOportunidad = this.oportunidad.id,
+            idUsuario = this.usuario.id,
+            tipoAccion = this.tipoAccion,
+            fechaHora = this.fechaHora.toDateTimeMillis(),
+            resultado = this.resultado,
+            proximaAccion = this.proximaAccion ?: "",
+            fechaProximo = this.fechaProximoSeguimiento.toDateMillis(),
+            idContacto = null
+        )
+    }
 
-    // Inserta un seguimiento nuevo (una gestión: llamada, email, reunión).
-    // Se llama desde el formulario de "Nueva gestión" en la pantalla de seguimiento.
-    // Devuelve el id asignado por Room.
-    // Nota: los cambios de estado NO se insertan desde aquí; se insertan desde
-    // OportunidadRepository.cambiarEstado() dentro de una transacción.
-    suspend fun insertar(seguimiento: Seguimiento): Long = dao.insertarSeguimiento(seguimiento)
+    private fun Seguimiento.toRemoteModel(incluirId: Boolean = false): SeguimientoRemote {
+        return SeguimientoRemote(
+            id = if (incluirId && this.idSeguimiento > 0) this.idSeguimiento else null,
+            tipoAccion = this.tipoAccion,
+            fechaHora = null, // El backend asigna LocalDateTime.now() si es null
+            resultado = this.resultado,
+            proximaAccion = this.proximaAccion,
+            fechaProximoSeguimiento = this.fechaProximo.toIsoDate(),
+            observaciones = "",
+            oportunidad = OportunidadRef(id = this.idOportunidad),
+            usuario = UsuarioRef(id = this.idUsuario)
+        )
+    }
 
-    // Actualiza un seguimiento existente (por su id).
-    // Se usa si se edita el resultado o la próxima acción de una gestión ya registrada.
-    suspend fun actualizar(seguimiento: Seguimiento) = dao.actualizarSeguimiento(seguimiento)
+    // =========================================================================
+    // CONSULTAS Y OPERACIONES
+    // =========================================================================
 
-    // Devuelve la ÚLTIMA gestión real (no cambio de estado) de cada oportunidad activa.
-    // Devuelve un objeto AlertaSeguimiento (no Seguimiento) con campos agregados:
-    // nombre de la oportunidad y nombre del responsable (obtenidos por JOIN).
-    // idResponsable = 0 → todo el equipo (supervisor); otro valor → solo ese ejecutivo.
-    // Se usa en el Dashboard para el resumen de gestiones activas del equipo.
-    fun obtenerUltimasGestiones(idResponsable: Long): Flow<List<AlertaSeguimiento>> =
-        dao.obtenerUltimasGestiones(idResponsable)
+    fun obtenerHistorial(idOportunidad: Long): Flow<List<Seguimiento>> = flow {
+        try {
+            val lista = api.listarSeguimientos(idOportunidad)
+                .map { it.toLocalModel() }
+                .sortedByDescending { it.fechaHora }
+            emit(lista)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(emptyList())
+        }
+    }
 
-    // HU-14: historial de gestiones con una organización (0 = sin filtrar por responsable).
-    fun obtenerHistorialPorOrganizacion(idOrganizacion: Long, idResponsable: Long): Flow<List<GestionOrganizacion>> =
-        dao.obtenerHistorialPorOrganizacion(idOrganizacion, idResponsable)
+    fun obtenerAtrasados(fechaActual: Long): Flow<List<Seguimiento>> = flow {
+        try {
+            val atrasados = api.listarTodosSeguimientos()
+                .map { it.toLocalModel() }
+                .filter { !it.tipoAccion.equals("Cambio de estado", ignoreCase = true) && it.fechaProximo < fechaActual }
+                .sortedBy { it.fechaProximo }
+            emit(atrasados)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(emptyList())
+        }
+    }
+
+    fun obtenerPendientesPorUsuario(idUsuario: Long, fechaActual: Long): Flow<List<Seguimiento>> = flow {
+        try {
+            val pendientes = api.listarTodosSeguimientos()
+                .map { it.toLocalModel() }
+                .filter { seg ->
+                    (idUsuario == 0L || seg.idUsuario == idUsuario) &&
+                            !seg.tipoAccion.equals("Cambio de estado", ignoreCase = true) &&
+                            seg.fechaProximo >= fechaActual
+                }
+                .sortedBy { it.fechaProximo }
+            emit(pendientes)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(emptyList())
+        }
+    }
+
+    fun obtenerPorUsuario(idUsuario: Long): Flow<List<Seguimiento>> = flow {
+        try {
+            val lista = api.listarTodosSeguimientos()
+                .map { it.toLocalModel() }
+                .filter { it.idUsuario == idUsuario }
+                .sortedByDescending { it.fechaHora }
+            emit(lista)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(emptyList())
+        }
+    }
+
+    suspend fun insertar(seguimiento: Seguimiento): Long {
+        return try {
+            val response = api.crearSeguimiento(seguimiento.toRemoteModel(incluirId = false))
+            if (response.isSuccessful && response.body()?.id != null) {
+                response.body()!!.id!!
+            } else {
+                0L
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            0L
+        }
+    }
+
+    suspend fun actualizar(seguimiento: Seguimiento) {
+        try {
+            api.actualizarSeguimiento(
+                id = seguimiento.idSeguimiento,
+                seg = seguimiento.toRemoteModel(incluirId = true)
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun obtenerUltimasGestiones(idResponsable: Long): Flow<List<AlertaSeguimiento>> = flow {
+        try {
+            val filtroUser = if (idResponsable == 0L) null else idResponsable
+            val oportunidades = api.listarOportunidades(filtroUser)
+                .filter { !it.estado.equals("Descartada", ignoreCase = true) }
+
+            val alertas = oportunidades.mapNotNull { op ->
+                val opId = op.id ?: return@mapNotNull null
+                val ultima = api.listarSeguimientos(opId)
+                    .filter { !it.tipoAccion.equals("Cambio de estado", ignoreCase = true) }
+                    .maxByOrNull { it.fechaHora.toDateTimeMillis() }
+
+                ultima?.let {
+                    AlertaSeguimiento(
+                        idOportunidad = opId,
+                        nombreOportunidad = op.nombre,
+                        nombreResponsable = op.responsable?.nombre,
+                        tipoAccion = it.tipoAccion,
+                        proximaAccion = it.proximaAccion ?: "",
+                        fechaProximo = it.fechaProximoSeguimiento.toDateMillis()
+                    )
+                }
+            }
+            emit(alertas)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(emptyList())
+        }
+    }
+
+    fun obtenerHistorialPorOrganizacion(idOrganizacion: Long, idResponsable: Long): Flow<List<GestionOrganizacion>> = flow {
+        try {
+            val filtroUser = if (idResponsable == 0L) null else idResponsable
+            val usuariosMap = api.listarUsuarios().associateBy { it.id }
+            val opsOrg = api.listarOportunidades(filtroUser)
+                .filter { it.organizacion.id == idOrganizacion }
+
+            val historial = opsOrg.flatMap { op ->
+                val opId = op.id ?: return@flatMap emptyList()
+                api.listarSeguimientos(opId).map { seg ->
+                    GestionOrganizacion(
+                        idSeguimiento = seg.id ?: 0L,
+                        fechaHora = seg.fechaHora.toDateTimeMillis(),
+                        tipoAccion = seg.tipoAccion,
+                        resultado = seg.resultado,
+                        idOportunidad = opId,
+                        nombreOportunidad = op.nombre,
+                        autor = usuariosMap[seg.usuario.id]?.nombre ?: "Usuario #${seg.usuario.id}",
+                        nombreContacto = null
+                    )
+                }
+            }.sortedByDescending { it.fechaHora }
+
+            emit(historial)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(emptyList())
+        }
+    }
 }

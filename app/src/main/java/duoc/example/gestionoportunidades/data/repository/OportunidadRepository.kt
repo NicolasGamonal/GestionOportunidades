@@ -1,223 +1,399 @@
 package duoc.example.gestionoportunidades.data.repository
 
-import androidx.room.withTransaction
 import duoc.example.gestionoportunidades.data.local.AppDatabase
+import duoc.example.gestionoportunidades.data.remote.ApiService
+import duoc.example.gestionoportunidades.data.remote.ContactoRemote
+import duoc.example.gestionoportunidades.data.remote.OportunidadRef
+import duoc.example.gestionoportunidades.data.remote.OportunidadRemote
+import duoc.example.gestionoportunidades.data.remote.OrganizacionRef
+import duoc.example.gestionoportunidades.data.remote.OrganizacionRemote
+import duoc.example.gestionoportunidades.data.remote.RetrofitClient
+import duoc.example.gestionoportunidades.data.remote.SeguimientoRemote
+import duoc.example.gestionoportunidades.data.remote.UsuarioRef
 import duoc.example.gestionoportunidades.model.Contacto
 import duoc.example.gestionoportunidades.model.ConteoEstado
 import duoc.example.gestionoportunidades.model.Oportunidad
 import duoc.example.gestionoportunidades.model.Organizacion
-import duoc.example.gestionoportunidades.model.Seguimiento
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import org.json.JSONObject
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
-// Repositorio de oportunidades. Es el más grande del proyecto porque agrupa
-// la lógica de 3 módulos: Oportunidades, Organizaciones y Contactos.
-// Esto se debe a que el ViewModel de organizaciones/contactos (OrgContactosViewModel)
-// también necesita crear oportunidades y contactos en el mismo flujo.
-//
-// Capa intermedia entre los ViewModels y los DAOs.
-// El ViewModel nunca llama directo a un DAO; siempre pasa por este repositorio.
-// Aquí se centraliza la lógica de negocio que involucra múltiples tablas
-// (por ejemplo, cambiar estado + registrar historial en una sola transacción).
 class OportunidadRepository(private val db: AppDatabase) {
 
-    // Referencias a los 4 DAOs que este repositorio necesita.
-    // Se obtienen una sola vez al construir el repositorio.
-    private val oportunidadDao = db.oportunidadDao()
-    private val organizacionDao = db.organizacionDao()
-    private val contactoDao = db.contactoDao()
-    private val seguimientoDao = db.seguimientoDao()
+    private val api: ApiService = RetrofitClient.apiService
+    private val zonaHoraria = ZoneId.systemDefault()
 
-    // --- Módulo Oportunidades ---
+    // =========================================================================
+    // 1. HELPERS DE CONVERSIÓN (Fechas y Modelos)
+    // =========================================================================
 
-    // Guarda una oportunidad nueva (o la sobrescribe si el id ya existe, por REPLACE).
-    // Se llama desde el formulario de crear/editar oportunidad.
-    // Devuelve el id asignado por Room.
+    private fun String?.toMillis(): Long {
+        if (this.isNullOrBlank()) return System.currentTimeMillis()
+        return try {
+            LocalDate.parse(this.take(10))
+                .atStartOfDay(zonaHoraria)
+                .toInstant()
+                .toEpochMilli()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
+    }
+
+    private fun Long.toIsoDate(): String {
+        return Instant.ofEpochMilli(this)
+            .atZone(zonaHoraria)
+            .toLocalDate()
+            .toString()
+    }
+
+    private fun OportunidadRemote.toLocalModel(): Oportunidad {
+        return Oportunidad(
+            idOportunidad = this.id ?: 0L,
+            nombre = this.nombre,
+            tipoEvento = this.tipo,
+            fechaDeteccion = this.fechaDeteccion.toMillis(),
+            fechaInicio = this.fechaEvento.toMillis(),
+            fechaTermino = (this.fechaTermino ?: this.fechaEvento).toMillis(),
+            comuna = this.comuna ?: "",
+            publicoEsperado = this.publicoEsperado ?: 0,
+            prioridad = this.prioridad,
+            estado = this.estado,
+            costoReferencial = this.costoReferencial ?: 0.0,
+            observaciones = this.observaciones ?: "",
+            idOrganizacion = this.organizacion.id ?: 0L,
+            idResponsable = this.responsable?.id,
+            descripcion = this.descripcion ?: "",
+            fuenteInformacion = this.fuenteInformacion ?: "",
+            potencialComercial = this.potencialComercial ?: "Medio",
+            afinidad = this.afinidad ?: "Media",
+            publicoObjetivo = this.publicoObjetivo ?: "",
+            condicionesParticipacion = this.condicionesParticipacion ?: "",
+            requisitos = this.requisitos ?: "",
+            espaciosDisponibles = this.espaciosDisponibles ?: 0
+        )
+    }
+
+    private fun Oportunidad.toPayloadMap(): Map<String, Any?> {
+        return mapOf(
+            "nombre" to this.nombre,
+            "tipo" to this.tipoEvento,
+            "descripcion" to this.descripcion,
+            "fuenteInformacion" to this.fuenteInformacion,
+            "fechaDeteccion" to this.fechaDeteccion.toIsoDate(),
+            "fechaEvento" to this.fechaInicio.toIsoDate(),
+            "fechaTermino" to this.fechaTermino.toIsoDate(),
+            "horarioEvento" to "09:00 - 18:00",
+            "direccion" to this.comuna,
+            "comuna" to this.comuna,
+            "region" to "Metropolitana",
+            "publicoObjetivo" to this.publicoObjetivo,
+            "publicoEsperado" to this.publicoEsperado,
+            "costoReferencial" to this.costoReferencial,
+            "prioridad" to this.prioridad,
+            "potencialComercial" to this.potencialComercial,
+            "afinidad" to this.afinidad,
+            "estado" to this.estado,
+            "condicionesParticipacion" to this.condicionesParticipacion,
+            "requisitos" to this.requisitos,
+            "espaciosDisponibles" to this.espaciosDisponibles,
+            "observaciones" to this.observaciones,
+            "organizacion" to mapOf("id" to this.idOrganizacion),
+            "responsable" to this.idResponsable?.let { mapOf("id" to it) }
+        )
+    }
+
+    // =========================================================================
+    // 2. MÓDULO OPORTUNIDADES (CRUD y Consultas)
+    // =========================================================================
+
     suspend fun guardarOportunidad(oportunidad: Oportunidad): Long {
-        return oportunidadDao.insertarOportunidad(oportunidad)
+        return try {
+            val response = api.crearOportunidad(oportunidad.toPayloadMap())
+            if (response.isSuccessful && response.body()?.id != null) {
+                response.body()!!.id!!
+            } else {
+                0L
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            0L
+        }
     }
 
-    // Actualiza una oportunidad existente (por su id).
-    // Se usa al editar campos desde el formulario sin cambiar el estado.
     suspend fun modificarOportunidad(oportunidad: Oportunidad) {
-        oportunidadDao.actualizarOportunidad(oportunidad)
+        try {
+            val actorId = oportunidad.idResponsable ?: 1L
+            api.actualizarOportunidad(
+                id = oportunidad.idOportunidad,
+                usuarioId = actorId,
+                oportunidad = oportunidad.toPayloadMap()
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
-    // Busca una oportunidad específica por su id (consulta puntual, no reactiva).
-    // Se usa al abrir el detalle desde la lista.
-    // Devuelve la oportunidad o null si no existe.
     suspend fun obtenerPorId(id: Long): Oportunidad? {
-        return oportunidadDao.obtenerPorId(id)
+        return try {
+            api.obtenerOportunidad(id).toLocalModel()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
-    // Devuelve todas las oportunidades filtradas por nombre (búsqueda parcial).
-    // Si busqueda es "" (vacío), el LIKE '%'' || '' || ''% coincide con todo → devuelve todas.
-    // Se usa en la lista principal cuando el usuario no ha activado filtros específicos.
-    fun obtenerTodasLasOportunidades(busqueda: String): Flow<List<Oportunidad>> {
-        return oportunidadDao.buscarPorNombre(busqueda)
+    fun observarPorId(id: Long): Flow<Oportunidad?> = flow {
+        emit(obtenerPorId(id))
     }
 
-    // Filtra por estado Y prioridad Y nombre a la vez (los 3 deben coincidir).
-    // Se usa cuando el usuario activa los chips de filtro en la UI.
-    // Diferente de obtenerTodasLasOportunidades: aquí los filtros son obligatorios.
-    fun filtrarOportunidades(estado: String, prioridad: String, busqueda: String): Flow<List<Oportunidad>> {
-        return oportunidadDao.filtrarOportunidades(estado, prioridad, busqueda)
+    fun obtenerTodasLasOportunidades(busqueda: String): Flow<List<Oportunidad>> = flow {
+        try {
+            val lista = api.listarOportunidades(null)
+                .map { it.toLocalModel() }
+                .filter { busqueda.isBlank() || it.nombre.contains(busqueda.trim(), ignoreCase = true) }
+            emit(lista)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(emptyList())
+        }
     }
 
-    // Devuelve solo las oportunidades asignadas a un usuario específico.
-    // Se usa para el rol EJECUTIVO: solo ve las suyas.
-    // El supervisor usa obtenerTodasLasOportunidades() o buscar() con idResponsable=0.
-    fun obtenerPorResponsable(idUsuario: Long): Flow<List<Oportunidad>> {
-        return oportunidadDao.obtenerPorResponsable(idUsuario)
+    fun filtrarOportunidades(estado: String, prioridad: String, busqueda: String): Flow<List<Oportunidad>> = flow {
+        try {
+            val lista = api.listarOportunidades(null)
+                .map { it.toLocalModel() }
+                .filter { op ->
+                    (estado.isBlank() || op.estado.equals(estado, ignoreCase = true)) &&
+                            (prioridad.isBlank() || op.prioridad.equals(prioridad, ignoreCase = true)) &&
+                            (busqueda.isBlank() || op.nombre.contains(busqueda.trim(), ignoreCase = true))
+                }
+            emit(lista)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(emptyList())
+        }
     }
 
-    // Devuelve oportunidades con fecha de inicio a partir de "desde" que no estén descartadas.
-    // idResponsable = 0 → todas (supervisor); otro valor → solo de ese ejecutivo.
-    // Se usa en el Dashboard para la sección "Eventos próximos".
-    fun obtenerEventosProximos(desde: Long, idResponsable: Long): Flow<List<Oportunidad>> {
-        return oportunidadDao.obtenerEventosProximos(desde, idResponsable)
+    fun obtenerPorResponsable(idUsuario: Long): Flow<List<Oportunidad>> = flow {
+        try {
+            val lista = api.listarOportunidades(idUsuario).map { it.toLocalModel() }
+            emit(lista)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(emptyList())
+        }
     }
 
-    // Cambia el estado de una oportunidad SIN registrar historial.
-    // Se usa en contextos donde no se necesita guardar el "Cambio de estado"
-    // (por ejemplo, en el seed o en migraciones).
-    // Para el flujo normal de la app, usar cambiarEstado() que sí registra historial.
-    suspend fun actualizarEstado(id: Long, estado: String) {
-        oportunidadDao.actualizarEstado(id, estado)
+    fun obtenerEventosProximos(desde: Long, idResponsable: Long): Flow<List<Oportunidad>> = flow {
+        try {
+            val filtroUser = if (idResponsable == 0L) null else idResponsable
+            val lista = api.listarOportunidades(filtroUser)
+                .map { it.toLocalModel() }
+                .filter { it.fechaInicio >= desde && !it.estado.equals("Descartada", ignoreCase = true) }
+                .sortedBy { it.fechaInicio }
+            emit(lista)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(emptyList())
+        }
     }
 
-    // --- Módulo Organizaciones ---
+    fun buscar(estado: String, prioridad: String, busqueda: String, idResponsable: Long): Flow<List<Oportunidad>> = flow {
+        try {
+            val filtroUser = if (idResponsable == 0L) null else idResponsable
+            val lista = api.listarOportunidades(filtroUser)
+                .map { it.toLocalModel() }
+                .filter { op ->
+                    (estado.isBlank() || op.estado.equals(estado, ignoreCase = true)) &&
+                            (prioridad.isBlank() || op.prioridad.equals(prioridad, ignoreCase = true)) &&
+                            (busqueda.isBlank() || op.nombre.contains(busqueda.trim(), ignoreCase = true))
+                }
+            emit(lista)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(emptyList())
+        }
+    }
 
-    // Guarda una organización nueva (o la sobrescribe por REPLACE).
-    // Se llama desde el formulario de crear/editar organización.
-    // Devuelve el id asignado.
+    // =========================================================================
+    // 3. MÓDULO ORGANIZACIONES Y CONTACTOS (Compatibilidad con ViewModels)
+    // =========================================================================
+
     suspend fun guardarOrganizacion(organizacion: Organizacion): Long {
-        return organizacionDao.insertarOrganizacion(organizacion)
+        return try {
+            val remote = OrganizacionRemote(
+                nombre = organizacion.nombre,
+                tipo = organizacion.tipo,
+                rubro = organizacion.rubro,
+                comuna = organizacion.comuna,
+                region = "Metropolitana",
+                sitioWeb = "",
+                publicoAsociado = "",
+                observaciones = ""
+            )
+            val res = api.crearOrganizacion(remote)
+            if (res.isSuccessful) res.body()?.id ?: 0L else 0L
+        } catch (e: Exception) {
+            0L
+        }
     }
 
-    // Devuelve todas las organizaciones sin filtro.
-    // Se usa en la lista de la pantalla de organizaciones.
-    // Flow: se actualiza solo en la UI cuando se agrega o edita una organización.
-    fun obtenerOrganizaciones(): Flow<List<Organizacion>> {
-        return organizacionDao.obtenerTodas()
+    fun obtenerOrganizaciones(): Flow<List<Organizacion>> = flow {
+        try {
+            val lista = api.listarOrganizaciones().map {
+                Organizacion(
+                    idOrganizacion = it.id ?: 0L,
+                    nombre = it.nombre,
+                    tipo = it.tipo,
+                    rubro = it.rubro ?: "",
+                    comuna = it.comuna ?: ""
+                )
+            }
+            emit(lista)
+        } catch (e: Exception) {
+            emit(emptyList())
+        }
     }
 
-    // --- Módulo Contactos ---
-
-    // Guarda un contacto nuevo (o lo sobrescribe por REPLACE).
-    // Se llama desde el formulario de crear/editar contacto.
-    // Devuelve el id asignado.
     suspend fun guardarContacto(contacto: Contacto): Long {
-        return contactoDao.insertarContacto(contacto)
+        return try {
+            val remote = ContactoRemote(
+                nombre = contacto.nombre,
+                cargo = contacto.cargo,
+                area = contacto.area,
+                correo = contacto.correo,
+                telefono = contacto.telefono,
+                medioPreferente = contacto.medioPreferente,
+                estado = "Activo",
+                observaciones = "",
+                organizacion = OrganizacionRef(contacto.idOrganizacion)
+            )
+            val res = api.crearContacto(remote)
+            if (res.isSuccessful) res.body()?.id ?: 0L else 0L
+        } catch (e: Exception) {
+            0L
+        }
     }
 
-    // Devuelve los contactos de una organización específica.
-    // Se usa en la pantalla de detalle de organización para mostrar su equipo.
-    fun obtenerContactosPorOrganizacion(idOrg: Long): Flow<List<Contacto>> {
-        return contactoDao.obtenerContactosPorOrganizacion(idOrg)
+    fun obtenerContactosPorOrganizacion(idOrg: Long): Flow<List<Contacto>> = flow {
+        try {
+            val lista = api.listarContactos(idOrg).map {
+                Contacto(
+                    idContacto = it.id ?: 0L,
+                    nombre = it.nombre,
+                    cargo = it.cargo ?: "",
+                    area = it.area ?: "",
+                    correo = it.correo,
+                    telefono = it.telefono,
+                    idOrganizacion = it.organizacion.id,
+                    medioPreferente = it.medioPreferente ?: "Correo"
+                )
+            }
+            emit(lista)
+        } catch (e: Exception) {
+            emit(emptyList())
+        }
     }
 
-    // Búsqueda flexible: combina estado, prioridad, nombre y responsable.
-    // Los parámetros vacíos ('') o 0 significan "no aplicar ese filtro".
-    // Es la consulta principal de la lista de oportunidades con los filtros opcionales de la UI.
-    // idResponsable = 0 → todas (supervisor); otro valor → solo de ese ejecutivo.
-    fun buscar(estado: String, prioridad: String, busqueda: String, idResponsable: Long): Flow<List<Oportunidad>> =
-        oportunidadDao.buscar(estado, prioridad, busqueda, idResponsable)
+    // =========================================================================
+    // 4. ALERTAS, INDICADORES Y CAMBIOS DE ESTADO
+    // =========================================================================
 
-    // Observa una oportunidad en tiempo real (Flow).
-    // Si el supervisor cambia el estado o reasigna, la UI del ejecutivo se actualiza sola.
-    // Se usa en la pantalla de detalle para mantener los datos siempre frescos.
-    fun observarPorId(id: Long): Flow<Oportunidad?> = oportunidadDao.observarPorId(id)
+    fun obtenerSinGestiones(idResponsable: Long): Flow<List<Oportunidad>> = flow {
+        try {
+            val filtroUser = if (idResponsable == 0L) null else idResponsable
+            val ops = api.listarOportunidades(filtroUser).map { it.toLocalModel() }
+            val sinGestiones = ops.filter { op ->
+                api.listarSeguimientos(op.idOportunidad).isEmpty()
+            }
+            emit(sinGestiones)
+        } catch (e: Exception) {
+            emit(emptyList())
+        }
+    }
 
-    // HU-20: oportunidades sin gestiones y oportunidades cuya organización no tiene contactos.
-    fun obtenerSinGestiones(idResponsable: Long): Flow<List<Oportunidad>> =
-        oportunidadDao.obtenerSinGestiones(idResponsable)
+    fun obtenerSinContacto(idResponsable: Long): Flow<List<Oportunidad>> = flow {
+        try {
+            val filtroUser = if (idResponsable == 0L) null else idResponsable
+            val ops = api.listarOportunidades(filtroUser).map { it.toLocalModel() }
+            val sinContacto = ops.filter { op ->
+                api.listarContactos(op.idOrganizacion).isEmpty()
+            }
+            emit(sinContacto)
+        } catch (e: Exception) {
+            emit(emptyList())
+        }
+    }
 
-    fun obtenerSinContacto(idResponsable: Long): Flow<List<Oportunidad>> =
-        oportunidadDao.obtenerSinContacto(idResponsable)
+    fun contarPorEstado(idResponsable: Long): Flow<List<ConteoEstado>> = flow {
+        try {
+            val filtroUser = if (idResponsable == 0L) null else idResponsable
+            val conteos = api.listarOportunidades(filtroUser)
+                .groupBy { it.estado }
+                .map { (estado, lista) -> ConteoEstado(estado = estado, cantidad = lista.size) }
+            emit(conteos)
+        } catch (e: Exception) {
+            emit(emptyList())
+        }
+    }
 
-    // HU-25: conteo de oportunidades por estado.
-    fun contarPorEstado(idResponsable: Long): Flow<List<ConteoEstado>> =
-        oportunidadDao.contarPorEstado(idResponsable)
+    suspend fun actualizarEstado(id: Long, estado: String) {
+        try {
+            val actual = obtenerPorId(id) ?: return
+            val payload = actual.copy(estado = estado).toPayloadMap()
+            api.actualizarOportunidad(id, actual.idResponsable ?: 1L, payload)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
-    // Cambia el estado de una oportunidad Y registra el historial en una sola transacción.
-    //
-    // ¿Por qué withTransaction?
-    // Porque son 2 operaciones atómicas: actualizar el estado + insertar el seguimiento.
-    // Si la primera falla, la segunda no se ejecuta (y viceversa).
-    // Esto garantiza que nunca quede una oportunidad con estado cambiado pero sin historial,
-    // o un seguimiento de "Cambio de estado" sin que el estado haya cambiado.
-    //
-    // ¿Por qué se registra como Seguimiento?
-    // Porque el checklist pide "conservar el historial de gestiones".
-    // Cada cambio de estado se guarda como tipoAccion = "Cambio de estado",
-    // así el historial se consulta en un solo lugar (la tabla seguimientos).
-    //
-    // Parámetros:
-    // - idOportunidad: la oportunidad a la que se le cambia el estado.
-    // - estadoAnterior: para registrar en el resultado ("Identificada → Contacto realizado").
-    // - nuevoEstado: el estado al que pasa.
-    // - idUsuario: quién hizo el cambio (se guarda en el seguimiento).
     suspend fun cambiarEstado(
         idOportunidad: Long,
         estadoAnterior: String,
         nuevoEstado: String,
         idUsuario: Long
     ) {
-        val ahora = System.currentTimeMillis()
-        db.withTransaction {
-            // Paso 1: actualizar el estado en la tabla oportunidades
-            oportunidadDao.actualizarEstado(idOportunidad, nuevoEstado)
-            // Paso 2: registrar el cambio en la tabla seguimientos (historial)
-            seguimientoDao.insertarSeguimiento(
-                Seguimiento(
-                    idOportunidad = idOportunidad,
-                    idUsuario = idUsuario,
-                    tipoAccion = "Cambio de estado",
-                    fechaHora = ahora,
-                    resultado = "$estadoAnterior → $nuevoEstado",
-                    proximaAccion = "",
-                    fechaProximo = ahora
-                )
-            )
+        val actual = obtenerPorId(idOportunidad) ?: throw Exception("Oportunidad no encontrada")
+        val payload = actual.copy(estado = nuevoEstado).toPayloadMap()
+        val response = api.actualizarOportunidad(idOportunidad, idUsuario, payload)
+        if (!response.isSuccessful) {
+            val raw = response.errorBody()?.string() ?: "No se pudo cambiar el estado"
+            val msg = try { JSONObject(raw).optString("mensaje", raw) } catch (_: Exception) { raw }
+            throw Exception(msg)
         }
+        // Registrar el cambio en el historial (Seguimiento)
+        api.crearSeguimiento(
+            SeguimientoRemote(
+                tipoAccion = "Cambio de estado",
+                resultado = "$estadoAnterior → $nuevoEstado",
+                proximaAccion = "",
+                fechaProximoSeguimiento = LocalDate.now().toString(),
+                observaciones = "",
+                oportunidad = OportunidadRef(idOportunidad),
+                usuario = UsuarioRef(idUsuario)
+            )
+        )
     }
 
-    // Elimina una oportunidad con reglas de negocio (no se puede borrar cualquier oportunidad).
-    //
-    // Reglas (en orden de prioridad):
-    // 1. Si la oportunidad ya no existe → mensaje de error.
-    // 2. Si el estado NO es "Identificada" → no se puede eliminar.
-    //    Razón: las oportunidades que avanzaron de estado tienen historial de valor.
-    //    La alternativa es descartarlas (que es una acción del supervisor).
-    // 3. Si tiene seguimientos registrados → no se puede eliminar (conservar historial).
-    // 4. Si tiene fotos de evidencia → no se puede eliminar (hay que borrarlas primero).
-    // 5. Si pasa todas las reglas → se elimina y devuelve null (éxito).
-    //
-    // ¿Por qué withTransaction?
-    // Porque leemos (obtenerPorId, contarPorOportunidad, contarPorOportunidad de evidencias)
-    // y luego escribimos (eliminarPorId). La transacción garantiza consistencia.
-    //
-    // Devuelve String? : mensaje de error si no se pudo eliminar, o null si fue exitoso.
-    // El ViewModel muestra el mensaje en un Snackbar si no es null.
-    suspend fun eliminar(id: Long): String? = db.withTransaction {
-        // Verificar que la oportunidad existe
-        val oportunidad = oportunidadDao.obtenerPorId(id)
-            ?: return@withTransaction "La oportunidad ya no existe."
-        when {
-            // Regla 1: solo se eliminan las que están en "Identificada" (aún no se trabajaron)
-            oportunidad.estado != "Identificada" ->
-                "Solo se pueden eliminar oportunidades en estado Identificada. Las demás se descartan para conservar su historial."
-            // Regla 2: si tiene gestiones, no se borra
-            seguimientoDao.contarPorOportunidad(id) > 0 ->
-                "Tiene gestiones registradas; no se puede eliminar para conservar el historial."
-            // Regla 3: si tiene fotos, hay que borrarlas primero desde la UI
-            db.evidenciaDao().contarPorOportunidad(id) > 0 ->
-                "Tiene fotos de evidencia; elimínalas primero desde el detalle."
-            // Regla 4: pasa todas las verificaciones → se elimina
-            else -> {
-                oportunidadDao.eliminarPorId(id)
-                null  // null = éxito
+    suspend fun eliminar(id: Long): String? {
+        return try {
+            val oportunidad = obtenerPorId(id) ?: return "La oportunidad ya no existe."
+            if (oportunidad.estado != "Identificada") {
+                return "Solo se pueden eliminar oportunidades en estado Identificada. Las demás se descartan para conservar su historial."
             }
+            if (api.listarSeguimientos(id).isNotEmpty()) {
+                return "Tiene gestiones registradas; no se puede eliminar para conservar el historial."
+            }
+            if (api.listarEvidencias(id).isNotEmpty()) {
+                return "Tiene fotos de evidencia; elimínalas primero desde el detalle."
+            }
+            val response = api.eliminarOportunidad(id)
+            if (response.isSuccessful) null else "No se pudo eliminar la oportunidad."
+        } catch (e: Exception) {
+            "Error de conexión: ${e.message}"
         }
     }
 }

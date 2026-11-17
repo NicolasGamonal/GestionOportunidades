@@ -1,55 +1,88 @@
 package duoc.example.gestionoportunidades.data.repository
 
+import android.util.Base64
 import duoc.example.gestionoportunidades.data.local.AppDatabase
+import duoc.example.gestionoportunidades.data.remote.ApiService
+import duoc.example.gestionoportunidades.data.remote.EvidenciaRemote
+import duoc.example.gestionoportunidades.data.remote.OportunidadRef
+import duoc.example.gestionoportunidades.data.remote.RetrofitClient
 import duoc.example.gestionoportunidades.model.Evidencia
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.time.LocalDateTime
+import java.time.ZoneId
 
-// Repositorio de evidencias (fotos capturadas con la cámara).
-// Capa intermedia entre el ViewModel (DetalleOportunidadViewModel) y el DAO (EvidenciaDao).
-// A diferencia de los otros repositorios, este también maneja archivos en el disco:
-// las fotos se guardan como archivos físicos en el almacenamiento interno de la app,
-// y en Room solo se guarda la ruta (rutaArchivo) para poder recuperarlas.
 class EvidenciaRepository(db: AppDatabase, private val directorioArchivos: File) {
 
-    // Referencia al DAO de evidencias. Se obtiene una sola vez al construir el repositorio.
-    private val dao = db.evidenciaDao()
+    private val api: ApiService = RetrofitClient.apiService
+    private val zonaHoraria = ZoneId.systemDefault()
 
-    // directorioArchivos: la carpeta en el almacenamiento interno de la app donde se guardan
-    // los archivos de las fotos (ej: /data/data/duoc.example.gestionoportunidades/files/fotos/).
-    // Se inyecta desde AppContainer para que el repositorio sepa dónde leer/escribir.
+    private fun String?.toDateTimeMillis(): Long {
+        if (this.isNullOrBlank()) return System.currentTimeMillis()
+        return try {
+            LocalDateTime.parse(this.take(19))
+                .atZone(zonaHoraria)
+                .toInstant()
+                .toEpochMilli()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
+    }
 
-    // Devuelve todas las fotos asociadas a una oportunidad, en tiempo real (Flow).
-    // Se usa en la pantalla de detalle para mostrar la galería de fotos del evento.
-    // Si se captura una foto nueva, la galería se actualiza sola sin recargar.
-    fun observarPorOportunidad(idOportunidad: Long): Flow<List<Evidencia>> =
-        dao.obtenerPorOportunidad(idOportunidad)
+    fun observarPorOportunidad(idOportunidad: Long): Flow<List<Evidencia>> = flow {
+        try {
+            val lista = api.listarEvidencias(idOportunidad).map { remote ->
+                Evidencia(
+                    idEvidencia = remote.id ?: 0L,
+                    rutaArchivo = remote.descripcion ?: "",
+                    fecha = remote.fechaCaptura.toDateTimeMillis(),
+                    idOportunidad = remote.oportunidad.id
+                )
+            }.sortedByDescending { it.fecha }
+            emit(lista)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(emptyList())
+        }
+    }
 
-    // Registra una evidencia nueva en la base de datos (guarda la ruta del archivo).
-    // El archivo de la foto ya fue copiado previamente a directorioArchivos
-    // (eso lo hace la pantalla de cámara en ui/nativo/).
-    // Devuelve el id de la evidencia insertada.
-    suspend fun registrar(evidencia: Evidencia): Long = dao.insertar(evidencia)
+    suspend fun registrar(evidencia: Evidencia): Long = withContext(Dispatchers.IO) {
+        try {
+            val archivo = File(directorioArchivos, evidencia.rutaArchivo)
+            val base64 = if (archivo.exists()) {
+                Base64.encodeToString(archivo.readBytes(), Base64.NO_WRAP)
+            } else {
+                ""
+            }
 
-    // Elimina una evidencia: borra el registro de Room Y el archivo físico de la foto.
-    //
-    // ¿Por qué dos pasos?
-    // 1. dao.eliminarPorId() → borra la fila de la tabla "evidencias" en Room.
-    // 2. File(...).delete() → borra el archivo .jpg/.png del almacenamiento interno.
-    //
-    // Si solo se borrara de Room, el archivo seguiría ocupando espacio en el teléfono
-    // (fuga de almacenamiento). Si solo se borrara el archivo, Room seguiría apuntando
-    // a una ruta inexistente (error al intentar mostrar la imagen).
-    //
-    // ¿Por qué withContext(Dispatchers.IO)?
-    // Porque borrar un archivo es una operación de E/S (disco) que puede tardar.
-    // Dispatchers.IO la mueve a un hilo de fondo para no bloquear la UI.
+            val remote = EvidenciaRemote(
+                descripcion = evidencia.rutaArchivo,
+                imagenBase64 = base64,
+                oportunidad = OportunidadRef(id = evidencia.idOportunidad)
+            )
+            val response = api.crearEvidencia(remote)
+            if (response.isSuccessful && response.body()?.id != null) {
+                response.body()!!.id!!
+            } else {
+                0L
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            0L
+        }
+    }
+
     suspend fun eliminar(evidencia: Evidencia) {
-        // Paso 1: borrar el registro de la base de datos
-        dao.eliminarPorId(evidencia.idEvidencia)
-        // Paso 2: borrar el archivo físico del disco (en un hilo de E/S)
-        withContext(Dispatchers.IO) { File(directorioArchivos, evidencia.rutaArchivo).delete() }
+        try {
+            api.eliminarEvidencia(evidencia.idEvidencia)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        withContext(Dispatchers.IO) {
+            File(directorioArchivos, evidencia.rutaArchivo).delete()
+        }
     }
 }
