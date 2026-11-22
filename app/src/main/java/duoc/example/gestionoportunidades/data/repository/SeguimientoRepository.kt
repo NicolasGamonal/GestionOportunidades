@@ -1,6 +1,5 @@
 package duoc.example.gestionoportunidades.data.repository
 
-import duoc.example.gestionoportunidades.data.local.AppDatabase
 import duoc.example.gestionoportunidades.data.remote.*
 import duoc.example.gestionoportunidades.model.AlertaSeguimiento
 import duoc.example.gestionoportunidades.model.GestionOrganizacion
@@ -12,9 +11,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 
-class SeguimientoRepository(private val db: AppDatabase) {
+class SeguimientoRepository(private val api: ApiService = RetrofitClient.apiService) {
 
-    private val api: ApiService = RetrofitClient.apiService
     private val zonaHoraria = ZoneId.systemDefault()
 
     // --- Helpers de Fecha ---

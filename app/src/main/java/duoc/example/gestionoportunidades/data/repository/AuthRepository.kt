@@ -1,6 +1,5 @@
 package duoc.example.gestionoportunidades.data.repository
 
-import duoc.example.gestionoportunidades.data.local.AppDatabase
 import duoc.example.gestionoportunidades.data.remote.LoginRequestRemote
 import duoc.example.gestionoportunidades.data.remote.RetrofitClient
 import duoc.example.gestionoportunidades.data.remote.UsuarioRemote
@@ -10,9 +9,8 @@ import kotlinx.coroutines.flow.flow
 import duoc.example.gestionoportunidades.data.remote.ApiService
 
 
-class AuthRepository(private val db: AppDatabase) {
+class AuthRepository(private val api: ApiService = RetrofitClient.apiService) {
 
-    private val api: ApiService = RetrofitClient.apiService
 
     // Convierte el Usuario que viene del JSON de Spring Boot al modelo Usuario de Android
     private fun UsuarioRemote.toLocalModel(): Usuario {

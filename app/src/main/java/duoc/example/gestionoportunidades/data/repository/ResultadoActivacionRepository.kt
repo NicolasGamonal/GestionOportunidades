@@ -1,6 +1,5 @@
 package duoc.example.gestionoportunidades.data.repository
 
-import duoc.example.gestionoportunidades.data.local.AppDatabase
 import duoc.example.gestionoportunidades.data.remote.ApiService
 import duoc.example.gestionoportunidades.data.remote.OportunidadRef
 import duoc.example.gestionoportunidades.data.remote.ResultadoActivacionRemote
@@ -12,9 +11,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
-class ResultadoActivacionRepository(db: AppDatabase) {
+class ResultadoActivacionRepository(private val api: ApiService = RetrofitClient.apiService) {
 
-    private val api: ApiService = RetrofitClient.apiService
     private val zonaHoraria = ZoneId.systemDefault()
 
     private fun String?.toDateMillis(): Long {

@@ -36,6 +36,12 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests {
+            // Robolectric necesita los recursos y el manifest de la app.
+            isIncludeAndroidResources = true
+        }
+    }
     packaging {
         resources {
             excludes += listOf(
@@ -79,5 +85,40 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    testImplementation("junit:junit:4.13.2")
+    // Pruebas unitarias (JVM)
+    testImplementation("io.mockk:mockk:1.13.13")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("app.cash.turbine:turbine:1.2.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0") // misma versión que okhttp
+    testImplementation("org.json:json:20240303") // JSONObject real; el de android.jar falla en JVM
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core-ktx:1.6.1")
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                packages(
+                    "duoc.example.gestionoportunidades.ui.theme",
+                    "duoc.example.gestionoportunidades.ui.components",
+                    "duoc.example.gestionoportunidades.ui.navigation",
+                    // Room sin uso: ningún repositorio consulta los DAO (se declara en el reporte).
+                    "duoc.example.gestionoportunidades.data.local"
+                )
+                classes(
+                    "*Screen*", "*Seccion*", "*BotonCalendario*", "*ComposableSingletons*",
+                    "duoc.example.gestionoportunidades.MainActivity*",
+                    "*.BuildConfig", "*.R", "*.R\$*",
+                    // Mock sin uso (historial de mentira con datos fijos).
+                    "duoc.example.gestionoportunidades.ui.seguimiento.SeguimientoViewModel*",
+                    "duoc.example.gestionoportunidades.data.Seguimiento"
+                )
+                annotatedBy("androidx.compose.ui.tooling.preview.Preview")
+            }
+        }
+        verify {
+            rule { minBound(80) } // koverVerify falla si la cobertura baja de 80 %
+        }
+    }
 }

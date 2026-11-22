@@ -1,7 +1,6 @@
 package duoc.example.gestionoportunidades.data.repository
 
 import android.util.Base64
-import duoc.example.gestionoportunidades.data.local.AppDatabase
 import duoc.example.gestionoportunidades.data.remote.ApiService
 import duoc.example.gestionoportunidades.data.remote.EvidenciaRemote
 import duoc.example.gestionoportunidades.data.remote.OportunidadRef
@@ -15,9 +14,11 @@ import java.io.File
 import java.time.LocalDateTime
 import java.time.ZoneId
 
-class EvidenciaRepository(db: AppDatabase, private val directorioArchivos: File) {
-
+class EvidenciaRepository(
+    private val directorioArchivos: File,
     private val api: ApiService = RetrofitClient.apiService
+) {
+
     private val zonaHoraria = ZoneId.systemDefault()
 
     private fun String?.toDateTimeMillis(): Long {

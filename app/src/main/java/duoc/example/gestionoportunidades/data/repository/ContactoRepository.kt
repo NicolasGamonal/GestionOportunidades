@@ -1,6 +1,5 @@
 package duoc.example.gestionoportunidades.data.repository
 
-import duoc.example.gestionoportunidades.data.local.AppDatabase
 import duoc.example.gestionoportunidades.data.remote.ApiService
 import duoc.example.gestionoportunidades.data.remote.ContactoRemote
 import duoc.example.gestionoportunidades.data.remote.OrganizacionRef
@@ -10,9 +9,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import org.json.JSONObject
 
-class ContactoRepository(private val db: AppDatabase) {
+class ContactoRepository(private val api: ApiService = RetrofitClient.apiService) {
 
-    private val api: ApiService = RetrofitClient.apiService
 
     private fun ContactoRemote.toLocalModel(): Contacto {
         return Contacto(

@@ -1,6 +1,5 @@
 package duoc.example.gestionoportunidades.data.repository
 
-import duoc.example.gestionoportunidades.data.local.AppDatabase
 import duoc.example.gestionoportunidades.data.remote.ApiService
 import duoc.example.gestionoportunidades.data.remote.NotaMarketingRemote
 import duoc.example.gestionoportunidades.data.remote.OportunidadRef
@@ -12,9 +11,8 @@ import kotlinx.coroutines.flow.flow
 import java.time.LocalDateTime
 import java.time.ZoneId
 
-class NotaMarketingRepository(db: AppDatabase) {
+class NotaMarketingRepository(private val api: ApiService = RetrofitClient.apiService) {
 
-    private val api: ApiService = RetrofitClient.apiService
     private val zonaHoraria = ZoneId.systemDefault()
 
     private fun String?.toDateTimeMillis(): Long {
