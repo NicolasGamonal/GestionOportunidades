@@ -1,11 +1,13 @@
 package duoc.example.gestionoportunidades.ui.nativo
 
 import android.app.Application
+import androidx.core.content.FileProvider
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -18,8 +20,16 @@ import java.io.File
  */
 @RunWith(RobolectricTestRunner::class)
 class ArchivosEvidenciaTest {
-
     private val app: Application get() = ApplicationProvider.getApplicationContext()
+
+    // FileProvider cachea la carpeta raíz por authority en un campo estático.
+    // Robolectric usa un filesDir distinto en cada test, así que hay que vaciarlo.
+    @Before
+    fun limpiarCacheDelFileProvider() {
+        val campo = FileProvider::class.java.getDeclaredField("sCache")
+        campo.isAccessible = true
+        (campo.get(null) as MutableMap<*, *>).clear()
+    }
 
     // =========================================================================
     // nuevaRutaRelativa

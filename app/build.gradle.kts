@@ -38,8 +38,22 @@ android {
     }
     testOptions {
         unitTests {
-            // Robolectric necesita los recursos y el manifest de la app.
             isIncludeAndroidResources = true
+            all {
+                it.jvmArgs(
+                    "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                    "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
+                    "--add-opens=java.base/java.io=ALL-UNNAMED",
+                    "--add-opens=java.base/java.net=ALL-UNNAMED",
+                    "--add-opens=java.base/java.nio=ALL-UNNAMED",
+                    "--add-opens=java.base/java.security=ALL-UNNAMED",
+                    "--add-opens=java.base/java.text=ALL-UNNAMED",
+                    "--add-opens=java.base/java.util=ALL-UNNAMED",
+                    "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
+                    "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED",
+                    "--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED"
+                )
+            }
         }
     }
     packaging {
@@ -91,7 +105,7 @@ dependencies {
     testImplementation("app.cash.turbine:turbine:1.2.0")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0") // misma versión que okhttp
     testImplementation("org.json:json:20240303") // JSONObject real; el de android.jar falla en JVM
-    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("org.robolectric:robolectric:4.17")
     testImplementation("androidx.test:core-ktx:1.6.1")
 }
 
