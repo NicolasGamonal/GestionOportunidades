@@ -26,7 +26,6 @@ import java.io.IOException
  * RetrofitClient apunta fijo a http://10.0.2.2:8080 (no se puede cambiar), por eso aquí se arma
  * un Retrofit con la misma configuración (Gson, sin interceptores) apuntando al servidor falso.
  */
-@Ignore
 class ApiServiceWireTest {
 
     private lateinit var server: MockWebServer

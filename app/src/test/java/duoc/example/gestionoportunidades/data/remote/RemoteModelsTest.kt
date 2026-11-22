@@ -7,7 +7,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Ignore
 import org.junit.Test
 
-@Ignore
 class RemoteModelsTest {
 
     private val org = OrganizacionRemote(

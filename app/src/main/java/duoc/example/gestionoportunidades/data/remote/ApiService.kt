@@ -20,13 +20,15 @@ interface ApiService {
     suspend fun obtenerOportunidad(@Path("id") id: Long): OportunidadRemote
 
     @POST("api/oportunidades")
-    suspend fun crearOportunidad(@Body oportunidad: Map<String, Any?>): Response<OportunidadRemote>
+    suspend fun crearOportunidad(
+        @Body oportunidad: @JvmSuppressWildcards Map<String, Any?>
+    ): Response<OportunidadRemote>
 
     @PUT("api/oportunidades/{id}")
     suspend fun actualizarOportunidad(
         @Path("id") id: Long,
         @Query("usuarioId") usuarioId: Long,
-        @Body oportunidad: Map<String, Any?>
+        @Body oportunidad: @JvmSuppressWildcards Map<String, Any?>
     ): Response<OportunidadRemote>
 
     @PATCH("api/oportunidades/{id}/asignar")
