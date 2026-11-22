@@ -643,21 +643,6 @@ class FormularioSeguimientoViewModelTest {
         }
     }
 
-    // =========================================================================
-    // Defecto documentado
-    // =========================================================================
-
-    /**
-     * DEFECTO: un guardado fallido se muestra como éxito.
-     * SeguimientoRepository.insertar atrapa todas las excepciones y devuelve 0L cuando la API falla
-     * (o responde sin id). El ViewModel solo mira si hubo excepción, así que marca guardadoExitoso = true
-     * y programa un recordatorio con idSeguimiento = 0, aunque nada se guardó.
-     *
-     * Esta prueba describe el comportamiento CORRECTO, por eso falla hoy y queda en @Ignore.
-     * Para activarla: corregir el ViewModel (tratar 0L como error y mostrar mensajeError)
-     * y quitar el @Ignore.
-     */
-    @Ignore("Defecto documentado: insertar devuelve 0L cuando la API falla y el formulario lo muestra como guardado")
     @Test
     fun `si insertar devuelve 0 porque la API fallo no debe marcarse como guardado`() = runTest {
         iniciarSesion()

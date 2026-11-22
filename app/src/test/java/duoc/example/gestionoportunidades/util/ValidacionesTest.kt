@@ -199,12 +199,6 @@ class ValidacionesTest {
         assertEquals(mensaje, Validaciones.validarFecha("texto", "La fecha"))
     }
 
-    // DEFECTO 4 (no estaba en el plan): DateTimeFormatter.ofPattern("dd/MM/yyyy") usa el modo SMART,
-    // que "corrige" en silencio el día inexistente (31/02/2026 se lee como 28/02/2026), así que
-    // validarFecha los da por válidos. Arreglo: construir el formato con
-    // DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT).
-    // Se deja @Ignore hasta que el equipo decida corregir el código; quitar @Ignore tras el arreglo.
-    @Ignore("Defecto 4: validarFecha acepta fechas inexistentes (modo SMART del formateador)")
     @Test
     fun `fecha inexistente como 31 de febrero deberia ser invalida`() {
         val mensaje = "La fecha debe estar en formato dd/MM/yyyy"

@@ -25,7 +25,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -383,10 +382,6 @@ class FormularioContactoViewModelTest {
         assertTrue(vm.uiState.value.guardadoExitoso)
     }
 
-    // DEFECTO 1 del plan: un guardado fallido se muestra como éxito.
-    // Si la API falla, ContactoRepository.insertar devuelve 0L (y actualizar devuelve Unit sin avisar),
-    // pero el formulario marca guardadoExitoso = true. Para activar la prueba, el ViewModel debe tratar 0L como fallo.
-    @Ignore("Defecto 1: un guardado fallido (el repositorio devuelve 0L) se muestra como éxito")
     @Test
     fun `DEFECTO 1 si el repositorio devuelve 0L se espera un mensaje de error y no guardadoExitoso`() = runTest {
         coEvery { contactoRepo.insertar(any()) } returns 0L

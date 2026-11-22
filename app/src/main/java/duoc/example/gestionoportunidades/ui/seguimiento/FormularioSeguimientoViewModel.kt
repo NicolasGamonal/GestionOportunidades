@@ -12,6 +12,7 @@ import duoc.example.gestionoportunidades.model.Seguimiento
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
 import duoc.example.gestionoportunidades.util.Permisos
 import duoc.example.gestionoportunidades.util.CampoSeguimiento
+import duoc.example.gestionoportunidades.util.Catalogos
 import duoc.example.gestionoportunidades.util.Recordatorios
 import duoc.example.gestionoportunidades.util.ValidacionesFormularios
 import duoc.example.gestionoportunidades.util.fechaCortaAMillis
@@ -133,6 +134,13 @@ class FormularioSeguimientoViewModel(
             _uiState.update { it.copy(guardando = true, mensajeError = null) }
             try {
                 val idNuevo = seguimientoRepository.insertar(seguimiento)
+                if (idNuevo <= 0L) {
+                    // La API no confirmó el guardado: no hay seguimiento, así que tampoco recordatorio
+                    _uiState.update {
+                        it.copy(guardando = false, mensajeError = Catalogos.MENSAJE_ERROR_GUARDADO)
+                    }
+                    return@launch
+                }
                 // HU-21: aviso local el día del próximo seguimiento
                 Recordatorios.programarSeguimiento(
                     context = appContext,

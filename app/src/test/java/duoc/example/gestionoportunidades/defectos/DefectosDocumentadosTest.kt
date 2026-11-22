@@ -207,7 +207,6 @@ class DefectosDocumentadosTest {
         verify(exactly = 1) { Recordatorios.programarSeguimiento(any(), 77L, any(), any(), any()) }
     }
 
-    @Ignore("DEFECTO 1: SeguimientoRepository.insertar devuelve 0L si la API responde con error y el formulario muestra éxito")
     @Test
     fun `DEFECTO 1 - nueva gestion rechazada por la API no debe mostrarse como guardada`() = runTest {
         coEvery { api.crearSeguimiento(any()) } returns respuestaError(500, """{"mensaje":"error interno"}""")
@@ -221,7 +220,6 @@ class DefectosDocumentadosTest {
         verify(exactly = 0) { Recordatorios.programarSeguimiento(any(), any(), any(), any(), any()) }
     }
 
-    @Ignore("DEFECTO 1: SeguimientoRepository.insertar devuelve 0L si no hay red y el formulario muestra éxito")
     @Test
     fun `DEFECTO 1 - nueva gestion sin conexion no debe mostrarse como guardada`() = runTest {
         coEvery { api.crearSeguimiento(any()) } throws IOException("sin red")
@@ -249,7 +247,6 @@ class DefectosDocumentadosTest {
         assertNull(vm.uiState.value.mensajeError)
     }
 
-    @Ignore("DEFECTO 1: OrganizacionRepository.insertar devuelve 0L si la API responde con error y el formulario muestra éxito")
     @Test
     fun `DEFECTO 1 - organizacion rechazada por la API no debe mostrarse como guardada`() = runTest {
         coEvery { api.crearOrganizacion(any()) } returns respuestaError(400, """{"mensaje":"datos inválidos"}""")
@@ -304,7 +301,6 @@ class DefectosDocumentadosTest {
         assertNull(vm.uiState.value.mensajeError)
     }
 
-    @Ignore("DEFECTO 1: ContactoRepository.insertar devuelve 0L si la API responde con error y el formulario muestra éxito")
     @Test
     fun `DEFECTO 1 - contacto rechazado por la API no debe mostrarse como guardado`() = runTest {
         coEvery { api.crearContacto(any()) } returns respuestaError(500, """{"mensaje":"error interno"}""")

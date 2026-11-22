@@ -2,6 +2,7 @@ package duoc.example.gestionoportunidades.util
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.format.ResolverStyle
 
 // Funciones puras de validación para formularios.
 // Devuelven String? (mensaje de error o null si es válido).
@@ -11,7 +12,9 @@ import java.time.format.DateTimeFormatter
 object Validaciones {
 
     // Formato de fecha usado en toda la app: "dd/MM/yyyy"
-    private val formatoFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    private val formatoFecha = DateTimeFormatter
+        .ofPattern("dd/MM/uuuu")
+        .withResolverStyle(ResolverStyle.STRICT)
 
     // --- Campos obligatorios ---
 

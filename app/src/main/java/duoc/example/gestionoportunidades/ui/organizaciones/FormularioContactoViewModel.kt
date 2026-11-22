@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import duoc.example.gestionoportunidades.util.CampoContacto
+import duoc.example.gestionoportunidades.util.Catalogos
 import duoc.example.gestionoportunidades.util.ValidacionesFormularios
 
 // ViewModel del formulario de crear/editar contacto.
@@ -135,8 +136,18 @@ class FormularioContactoViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(guardando = true, mensajeError = null) }
             try {
-                if (base == null) contactoRepository.insertar(contacto) else contactoRepository.actualizar(contacto)
-                _uiState.update { it.copy(guardando = false, guardadoExitoso = true) }
+                // insertar devuelve el id nuevo, o 0L si la API falló (el repositorio atrapa el error).
+                // actualizar no informa si falló: eso se arregla en el paso 2b.
+                val guardado = if (base == null) {
+                    contactoRepository.insertar(contacto) > 0L
+                } else {
+                    contactoRepository.actualizar(contacto)
+                    true
+                }
+                _uiState.update {
+                    if (guardado) it.copy(guardando = false, guardadoExitoso = true)
+                    else it.copy(guardando = false, mensajeError = Catalogos.MENSAJE_ERROR_GUARDADO)
+                }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(guardando = false, mensajeError = "No se pudo guardar: ${e.localizedMessage}")

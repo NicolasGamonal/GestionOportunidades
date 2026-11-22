@@ -31,6 +31,8 @@ object Catalogos {
     val evaluaciones = listOf(1, 2, 3, 4, 5)
 
     const val TIPO_CAMBIO_ESTADO = "Cambio de estado"
+    // Se muestra cuando el servidor no confirmó el guardado (el repositorio devolvió 0L)
+    const val MENSAJE_ERROR_GUARDADO = "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo."
 
     val tiposAccion = listOf(
         "Investigación inicial", "Búsqueda de contacto", "Primer contacto",

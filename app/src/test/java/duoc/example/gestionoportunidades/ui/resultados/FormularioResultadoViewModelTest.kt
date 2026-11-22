@@ -444,10 +444,6 @@ class FormularioResultadoViewModelTest {
         assertTrue(vm.uiState.value.guardadoExitoso)
     }
 
-    // DEFECTO 1 del plan: un guardado fallido se muestra como éxito.
-    // Si la API falla, ResultadoActivacionRepository.guardar devuelve 0L, pero el formulario lo ignora y
-    // marca guardadoExitoso = true. Para activar la prueba, el ViewModel debe tratar 0L como fallo.
-    @Ignore("Defecto 1: un guardado fallido (el repositorio devuelve 0L) se muestra como éxito")
     @Test
     fun `DEFECTO 1 si el repositorio devuelve 0L se espera un mensaje de error y no guardadoExitoso`() = runTest {
         SesionManager.iniciarSesion(supervisor())

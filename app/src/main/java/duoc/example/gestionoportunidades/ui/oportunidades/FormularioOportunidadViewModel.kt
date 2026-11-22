@@ -9,6 +9,7 @@ import duoc.example.gestionoportunidades.model.Oportunidad
 import duoc.example.gestionoportunidades.model.Organizacion
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
 import duoc.example.gestionoportunidades.util.CampoOportunidad
+import duoc.example.gestionoportunidades.util.Catalogos
 import duoc.example.gestionoportunidades.util.Permisos
 import duoc.example.gestionoportunidades.util.Validaciones
 import duoc.example.gestionoportunidades.util.ValidacionesFormularios
@@ -456,15 +457,18 @@ class FormularioOportunidadViewModel(
             // Activar el spinner y limpiar errores anteriores
             _uiState.update { it.copy(guardando = true, mensajeError = null) }
             try {
-                if (base == null) {
-                    // Modo CREACIÓN: inserta una nueva oportunidad
-                    oportunidadRepository.guardarOportunidad(oportunidad)
+                val guardado = if (base == null) {
+                    // Modo CREACIÓN: guardarOportunidad devuelve 0L si la API falló
+                    oportunidadRepository.guardarOportunidad(oportunidad) > 0L
                 } else {
-                    // Modo EDICIÓN: actualiza la oportunidad existente
+                    // Modo EDICIÓN: modificarOportunidad no informa si falló (paso 2b)
                     oportunidadRepository.modificarOportunidad(oportunidad)
+                    true
                 }
-                // Éxito: desactiva spinner, activa guardadoExitoso (dispara banner + retorno)
-                _uiState.update { it.copy(guardando = false, guardadoExitoso = true) }
+                _uiState.update {
+                    if (guardado) it.copy(guardando = false, guardadoExitoso = true)
+                    else it.copy(guardando = false, mensajeError = Catalogos.MENSAJE_ERROR_GUARDADO)
+                }
             } catch (e: Exception) {
                 // Error de Room: muestra el mensaje en el Snackbar
                 _uiState.update {

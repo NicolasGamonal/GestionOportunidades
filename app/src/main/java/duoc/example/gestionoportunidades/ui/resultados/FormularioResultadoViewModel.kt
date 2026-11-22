@@ -8,6 +8,7 @@ import duoc.example.gestionoportunidades.data.repository.ResultadoActivacionRepo
 import duoc.example.gestionoportunidades.model.ResultadoActivacion
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
 import duoc.example.gestionoportunidades.util.CampoResultado
+import duoc.example.gestionoportunidades.util.Catalogos
 import duoc.example.gestionoportunidades.util.Permisos
 import duoc.example.gestionoportunidades.util.Validaciones
 import duoc.example.gestionoportunidades.util.ValidacionesFormularios
@@ -141,8 +142,11 @@ class FormularioResultadoViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(guardando = true, mensajeError = null) }
             try {
-                resultadoRepository.guardar(resultado)
-                _uiState.update { it.copy(guardando = false, guardadoExitoso = true) }
+                val id = resultadoRepository.guardar(resultado)
+                _uiState.update {
+                    if (id > 0L) it.copy(guardando = false, guardadoExitoso = true)
+                    else it.copy(guardando = false, mensajeError = Catalogos.MENSAJE_ERROR_GUARDADO)
+                }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(guardando = false, mensajeError = "No se pudo guardar: ${e.localizedMessage}")
