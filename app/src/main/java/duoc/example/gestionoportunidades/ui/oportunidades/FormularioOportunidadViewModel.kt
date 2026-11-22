@@ -461,9 +461,8 @@ class FormularioOportunidadViewModel(
                     // Modo CREACIÓN: guardarOportunidad devuelve 0L si la API falló
                     oportunidadRepository.guardarOportunidad(oportunidad) > 0L
                 } else {
-                    // Modo EDICIÓN: modificarOportunidad no informa si falló (paso 2b)
+                    // Modo EDICIÓN: modificarOportunidad devuelve false si la API falló
                     oportunidadRepository.modificarOportunidad(oportunidad)
-                    true
                 }
                 _uiState.update {
                     if (guardado) it.copy(guardando = false, guardadoExitoso = true)

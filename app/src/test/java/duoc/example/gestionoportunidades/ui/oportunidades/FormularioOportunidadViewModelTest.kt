@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import duoc.example.gestionoportunidades.util.Catalogos
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -703,7 +704,7 @@ class FormularioOportunidadViewModelTest {
         val original = oportunidad(estado = "Propuesta enviada", idResponsable = 3L)
         coEvery { oportunidadRepo.obtenerPorId(5L) } returns original
         val enviada = slot<Oportunidad>()
-        coEvery { oportunidadRepo.modificarOportunidad(capture(enviada)) } just Runs
+        coEvery { oportunidadRepo.modificarOportunidad(capture(enviada)) } returns true
         val vm = vmListo(5L)
         vm.onNombreChange("  Feria renombrada  ")
 
@@ -721,7 +722,7 @@ class FormularioOportunidadViewModelTest {
         SesionManager.iniciarSesion(supervisor())
         coEvery { oportunidadRepo.obtenerPorId(5L) } returns oportunidad(idResponsable = null)
         val enviada = slot<Oportunidad>()
-        coEvery { oportunidadRepo.modificarOportunidad(capture(enviada)) } just Runs
+        coEvery { oportunidadRepo.modificarOportunidad(capture(enviada)) } returns true
         val vm = vmListo(5L)
 
         vm.guardar()
@@ -735,7 +736,7 @@ class FormularioOportunidadViewModelTest {
         SesionManager.iniciarSesion(supervisor())
         coEvery { oportunidadRepo.obtenerPorId(5L) } returns oportunidad()
         val enviada = slot<Oportunidad>()
-        coEvery { oportunidadRepo.modificarOportunidad(capture(enviada)) } just Runs
+        coEvery { oportunidadRepo.modificarOportunidad(capture(enviada)) } returns true
         val vm = vmListo(5L)
         vm.onDeteccionChange("06/03/2026")
 
@@ -757,6 +758,22 @@ class FormularioOportunidadViewModelTest {
 
         val s = vm.uiState.value
         assertEquals("No se pudo guardar: timeout", s.mensajeError)
+        assertFalse(s.guardadoExitoso)
+        assertFalse(s.guardando)
+    }
+
+    @Test
+    fun `en edicion si modificarOportunidad devuelve false no se muestra como guardada`() = runTest {
+        SesionManager.iniciarSesion(supervisor())
+        coEvery { oportunidadRepo.obtenerPorId(5L) } returns oportunidad()
+        coEvery { oportunidadRepo.modificarOportunidad(any()) } returns false
+        val vm = vmListo(5L)
+
+        vm.guardar()
+        advanceUntilIdle()
+
+        val s = vm.uiState.value
+        assertEquals(Catalogos.MENSAJE_ERROR_GUARDADO, s.mensajeError)
         assertFalse(s.guardadoExitoso)
         assertFalse(s.guardando)
     }

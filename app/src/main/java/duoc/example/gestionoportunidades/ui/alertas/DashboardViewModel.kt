@@ -6,8 +6,10 @@ import duoc.example.gestionoportunidades.data.repository.OportunidadRepository
 import duoc.example.gestionoportunidades.data.repository.SeguimientoRepository
 import duoc.example.gestionoportunidades.model.ConteoEstado
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
+import duoc.example.gestionoportunidades.util.Catalogos
 import duoc.example.gestionoportunidades.util.inicioDeHoyMillis
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -99,7 +101,12 @@ class DashboardViewModel(
             sinContacto = sinContacto,
             indicadores = calcularIndicadores(conteos)
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
+    }
+        // Si cualquiera de las 5 consultas falla (red caída, API caída), el combine termina con la excepción.
+        // La capturamos aquí y emitimos un estado de error en vez de dejar que la pantalla muestre "sin datos".
+        // CancellationException no se atrapa: catch la deja pasar por contrato.
+        .catch { emit(DashboardUiState(isLoading = false, error = Catalogos.MENSAJE_ERROR_LECTURA)) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
 
     // Determina el idResponsable según la sesión actual.
     // Se llama una sola vez en el initializer de la propiedad idResponsable.

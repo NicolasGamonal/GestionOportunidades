@@ -377,12 +377,21 @@ class OportunidadRepositoryTest {
     }
 
     @Test
-    fun `modificarOportunidad no propaga el error de red`() = runTest {
+    fun `modificarOportunidad no propaga el error de red y devuelve false`() = runTest {
         coEvery { api.actualizarOportunidad(any(), any(), any()) } throws IOException("sin red")
 
-        repo.modificarOportunidad(oportunidadLocal())
+        assertEquals(false, repo.modificarOportunidad(oportunidadLocal()))
 
         coVerify(exactly = 1) { api.actualizarOportunidad(any(), any(), any()) }
+    }
+
+    @Test
+    fun `modificarOportunidad devuelve true si la API acepta y false si responde error`() = runTest {
+        coEvery { api.actualizarOportunidad(any(), any(), any()) } returns Response.success(oportunidadRemota())
+        assertEquals(true, repo.modificarOportunidad(oportunidadLocal()))
+
+        coEvery { api.actualizarOportunidad(any(), any(), any()) } returns respuestaError(500)
+        assertEquals(false, repo.modificarOportunidad(oportunidadLocal()))
     }
 
     // =========================================================================
@@ -532,10 +541,12 @@ class OportunidadRepositoryTest {
     }
 
     @Test
-    fun `obtenerEventosProximos devuelve lista vacia si la red falla`() = runTest {
+    fun `obtenerEventosProximos propaga el error de red en vez de devolver lista vacia`() = runTest {
         coEvery { api.listarOportunidades(any()) } throws IOException("sin red")
 
-        assertTrue(repo.obtenerEventosProximos(0L, 0L).unico().isEmpty())
+        val error = fallaCon { repo.obtenerEventosProximos(0L, 0L).unico() }
+
+        assertTrue(error is IOException)
     }
 
     @Test
@@ -710,10 +721,12 @@ class OportunidadRepositoryTest {
     }
 
     @Test
-    fun `obtenerSinGestiones devuelve lista vacia si la red falla`() = runTest {
+    fun `obtenerSinGestiones propaga el error de red en vez de devolver lista vacia`() = runTest {
         coEvery { api.listarOportunidades(any()) } throws IOException("sin red")
 
-        assertTrue(repo.obtenerSinGestiones(0L).unico().isEmpty())
+        val error = fallaCon { repo.obtenerSinGestiones(0L).unico() }
+
+        assertTrue(error is IOException)
     }
 
     @Test
@@ -740,10 +753,12 @@ class OportunidadRepositoryTest {
     }
 
     @Test
-    fun `obtenerSinContacto devuelve lista vacia si la red falla`() = runTest {
+    fun `obtenerSinContacto propaga el error de red en vez de devolver lista vacia`() = runTest {
         coEvery { api.listarOportunidades(any()) } throws IOException("sin red")
 
-        assertTrue(repo.obtenerSinContacto(0L).unico().isEmpty())
+        val error = fallaCon { repo.obtenerSinContacto(0L).unico() }
+
+        assertTrue(error is IOException)
     }
 
     @Test
@@ -768,10 +783,12 @@ class OportunidadRepositoryTest {
     }
 
     @Test
-    fun `contarPorEstado devuelve lista vacia si la red falla`() = runTest {
+    fun `contarPorEstado propaga el error de red en vez de devolver lista vacia`() = runTest {
         coEvery { api.listarOportunidades(any()) } throws IOException("sin red")
 
-        assertTrue(repo.contarPorEstado(0L).unico().isEmpty())
+        val error = fallaCon { repo.contarPorEstado(0L).unico() }
+
+        assertTrue(error is IOException)
     }
 
     // =========================================================================

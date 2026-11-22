@@ -121,16 +121,18 @@ class OportunidadRepository(private val api: ApiService = RetrofitClient.apiServ
         }
     }
 
-    suspend fun modificarOportunidad(oportunidad: Oportunidad) {
-        try {
+    // Devuelve true solo si la API aceptó el cambio; false si respondió error o no hubo red.
+    suspend fun modificarOportunidad(oportunidad: Oportunidad): Boolean {
+        return try {
             val actorId = oportunidad.idResponsable ?: 1L
             api.actualizarOportunidad(
                 id = oportunidad.idOportunidad,
                 usuarioId = actorId,
                 oportunidad = oportunidad.toPayloadMap()
-            )
+            ).isSuccessful
         } catch (e: Exception) {
             e.printStackTrace()
+            false
         }
     }
 
@@ -185,18 +187,15 @@ class OportunidadRepository(private val api: ApiService = RetrofitClient.apiServ
         }
     }
 
+    // Las 5 consultas del dashboard NO atrapan la excepción: si la red falla, el Flow falla y
+    // DashboardViewModel la captura para mostrar un error (antes emitían lista vacía y se veía "sin datos").
     fun obtenerEventosProximos(desde: Long, idResponsable: Long): Flow<List<Oportunidad>> = flow {
-        try {
-            val filtroUser = if (idResponsable == 0L) null else idResponsable
-            val lista = api.listarOportunidades(filtroUser)
-                .map { it.toLocalModel() }
-                .filter { it.fechaInicio >= desde && !it.estado.equals("Descartada", ignoreCase = true) }
-                .sortedBy { it.fechaInicio }
-            emit(lista)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            emit(emptyList())
-        }
+        val filtroUser = if (idResponsable == 0L) null else idResponsable
+        val lista = api.listarOportunidades(filtroUser)
+            .map { it.toLocalModel() }
+            .filter { it.fechaInicio >= desde && !it.estado.equals("Descartada", ignoreCase = true) }
+            .sortedBy { it.fechaInicio }
+        emit(lista)
     }
 
     fun buscar(estado: String, prioridad: String, busqueda: String, idResponsable: Long): Flow<List<Oportunidad>> = flow {
@@ -301,41 +300,29 @@ class OportunidadRepository(private val api: ApiService = RetrofitClient.apiServ
     // =========================================================================
 
     fun obtenerSinGestiones(idResponsable: Long): Flow<List<Oportunidad>> = flow {
-        try {
-            val filtroUser = if (idResponsable == 0L) null else idResponsable
-            val ops = api.listarOportunidades(filtroUser).map { it.toLocalModel() }
-            val sinGestiones = ops.filter { op ->
-                api.listarSeguimientos(op.idOportunidad).isEmpty()
-            }
-            emit(sinGestiones)
-        } catch (e: Exception) {
-            emit(emptyList())
+        val filtroUser = if (idResponsable == 0L) null else idResponsable
+        val ops = api.listarOportunidades(filtroUser).map { it.toLocalModel() }
+        val sinGestiones = ops.filter { op ->
+            api.listarSeguimientos(op.idOportunidad).isEmpty()
         }
+        emit(sinGestiones)
     }
 
     fun obtenerSinContacto(idResponsable: Long): Flow<List<Oportunidad>> = flow {
-        try {
-            val filtroUser = if (idResponsable == 0L) null else idResponsable
-            val ops = api.listarOportunidades(filtroUser).map { it.toLocalModel() }
-            val sinContacto = ops.filter { op ->
-                api.listarContactos(op.idOrganizacion).isEmpty()
-            }
-            emit(sinContacto)
-        } catch (e: Exception) {
-            emit(emptyList())
+        val filtroUser = if (idResponsable == 0L) null else idResponsable
+        val ops = api.listarOportunidades(filtroUser).map { it.toLocalModel() }
+        val sinContacto = ops.filter { op ->
+            api.listarContactos(op.idOrganizacion).isEmpty()
         }
+        emit(sinContacto)
     }
 
     fun contarPorEstado(idResponsable: Long): Flow<List<ConteoEstado>> = flow {
-        try {
-            val filtroUser = if (idResponsable == 0L) null else idResponsable
-            val conteos = api.listarOportunidades(filtroUser)
-                .groupBy { it.estado }
-                .map { (estado, lista) -> ConteoEstado(estado = estado, cantidad = lista.size) }
-            emit(conteos)
-        } catch (e: Exception) {
-            emit(emptyList())
-        }
+        val filtroUser = if (idResponsable == 0L) null else idResponsable
+        val conteos = api.listarOportunidades(filtroUser)
+            .groupBy { it.estado }
+            .map { (estado, lista) -> ConteoEstado(estado = estado, cantidad = lista.size) }
+        emit(conteos)
     }
 
     suspend fun actualizarEstado(id: Long, estado: String) {

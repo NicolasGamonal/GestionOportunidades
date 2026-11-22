@@ -18,6 +18,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import duoc.example.gestionoportunidades.util.Catalogos
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -302,7 +303,7 @@ class FormularioContactoViewModelTest {
     @Test
     fun `actualizar en edicion conserva el id del contacto y la organizacion de la ruta`() = runTest {
         val enviado = slot<Contacto>()
-        coEvery { contactoRepo.actualizar(capture(enviado)) } just Runs
+        coEvery { contactoRepo.actualizar(capture(enviado)) } returns true
         val vm = vmEdicion()
         vm.onNombreChange("Ana Soto")
 
@@ -363,6 +364,19 @@ class FormularioContactoViewModelTest {
 
         assertEquals("No se pudo guardar: timeout", vm.uiState.value.mensajeError)
         assertFalse(vm.uiState.value.guardadoExitoso)
+    }
+
+    @Test
+    fun `si actualizar devuelve false no se muestra como guardado`() = runTest {
+        coEvery { contactoRepo.actualizar(any()) } returns false
+        val vm = vmEdicion()
+
+        vm.guardar()
+        advanceUntilIdle()
+
+        assertEquals(Catalogos.MENSAJE_ERROR_GUARDADO, vm.uiState.value.mensajeError)
+        assertFalse(vm.uiState.value.guardadoExitoso)
+        assertFalse(vm.uiState.value.guardando)
     }
 
     @Test

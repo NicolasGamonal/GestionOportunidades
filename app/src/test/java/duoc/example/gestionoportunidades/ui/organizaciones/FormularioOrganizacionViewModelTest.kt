@@ -19,6 +19,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import duoc.example.gestionoportunidades.util.Catalogos
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -296,7 +297,7 @@ class FormularioOrganizacionViewModelTest {
     fun `actualizar en edicion conserva el id de la organizacion`() = runTest {
         SesionManager.iniciarSesion(supervisor())
         val enviada = slot<Organizacion>()
-        coEvery { repo.actualizar(capture(enviada)) } just Runs
+        coEvery { repo.actualizar(capture(enviada)) } returns true
         val vm = vmListo(4L)
         vm.onNombreChange("  Colegio San Pedro Norte  ")
 
@@ -358,6 +359,20 @@ class FormularioOrganizacionViewModelTest {
 
         assertEquals("No se pudo guardar: timeout", vm.uiState.value.mensajeError)
         assertFalse(vm.uiState.value.guardadoExitoso)
+    }
+
+    @Test
+    fun `si actualizar devuelve false no se muestra como guardada`() = runTest {
+        SesionManager.iniciarSesion(supervisor())
+        coEvery { repo.actualizar(any()) } returns false
+        val vm = vmListo(4L)
+
+        vm.guardar()
+        advanceUntilIdle()
+
+        assertEquals(Catalogos.MENSAJE_ERROR_GUARDADO, vm.uiState.value.mensajeError)
+        assertFalse(vm.uiState.value.guardadoExitoso)
+        assertFalse(vm.uiState.value.guardando)
     }
 
     @Test

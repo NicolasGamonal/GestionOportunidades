@@ -68,6 +68,23 @@ fun DashboardScreen(
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
+    } else if (ui.error != null) {
+        // Falló la lectura (sin conexión, API caída): se informa en vez de mostrar el dashboard vacío.
+        // Al volver a abrir la pantalla el ViewModel vuelve a consultar.
+        Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(
+                    imageVector = Icons.Filled.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+                Text(
+                    text = ui.error.orEmpty(),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
     } else {
         // LazyColumn: lista scrollable que solo crea los items visibles (eficiente).
         // contentPadding: margen interno para que las tarjetas no toquen los bordes.

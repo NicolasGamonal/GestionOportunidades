@@ -10,6 +10,7 @@ import duoc.example.gestionoportunidades.testutil.respuestaError
 import duoc.example.gestionoportunidades.testutil.respuestaSinCuerpo
 import duoc.example.gestionoportunidades.testutil.seguimientoLocal
 import duoc.example.gestionoportunidades.testutil.seguimientoRemoto
+import duoc.example.gestionoportunidades.testutil.fallaCon
 import duoc.example.gestionoportunidades.testutil.unico
 import duoc.example.gestionoportunidades.testutil.usuarioRemoto
 import io.mockk.coEvery
@@ -420,10 +421,12 @@ class SeguimientoRepositoryTest {
     }
 
     @Test
-    fun `obtenerUltimasGestiones devuelve lista vacia si la red falla`() = runTest {
+    fun `obtenerUltimasGestiones propaga el error de red en vez de devolver lista vacia`() = runTest {
         coEvery { api.listarOportunidades(any()) } throws IOException("sin red")
 
-        assertTrue(repo.obtenerUltimasGestiones(0L).unico().isEmpty())
+        val error = fallaCon { repo.obtenerUltimasGestiones(0L).unico() }
+
+        assertTrue(error is IOException)
     }
 
     // =========================================================================

@@ -167,34 +167,30 @@ class SeguimientoRepository(private val api: ApiService = RetrofitClient.apiServ
         }
     }
 
+    // No atrapa la excepción: si la red falla, el Flow falla y DashboardViewModel la muestra como error.
     fun obtenerUltimasGestiones(idResponsable: Long): Flow<List<AlertaSeguimiento>> = flow {
-        try {
-            val filtroUser = if (idResponsable == 0L) null else idResponsable
-            val oportunidades = api.listarOportunidades(filtroUser)
-                .filter { !it.estado.equals("Descartada", ignoreCase = true) }
+        val filtroUser = if (idResponsable == 0L) null else idResponsable
+        val oportunidades = api.listarOportunidades(filtroUser)
+            .filter { !it.estado.equals("Descartada", ignoreCase = true) }
 
-            val alertas = oportunidades.mapNotNull { op ->
-                val opId = op.id ?: return@mapNotNull null
-                val ultima = api.listarSeguimientos(opId)
-                    .filter { !it.tipoAccion.equals("Cambio de estado", ignoreCase = true) }
-                    .maxByOrNull { it.fechaHora.toDateTimeMillis() }
+        val alertas = oportunidades.mapNotNull { op ->
+            val opId = op.id ?: return@mapNotNull null
+            val ultima = api.listarSeguimientos(opId)
+                .filter { !it.tipoAccion.equals("Cambio de estado", ignoreCase = true) }
+                .maxByOrNull { it.fechaHora.toDateTimeMillis() }
 
-                ultima?.let {
-                    AlertaSeguimiento(
-                        idOportunidad = opId,
-                        nombreOportunidad = op.nombre,
-                        nombreResponsable = op.responsable?.nombre,
-                        tipoAccion = it.tipoAccion,
-                        proximaAccion = it.proximaAccion ?: "",
-                        fechaProximo = it.fechaProximoSeguimiento.toDateMillis()
-                    )
-                }
+            ultima?.let {
+                AlertaSeguimiento(
+                    idOportunidad = opId,
+                    nombreOportunidad = op.nombre,
+                    nombreResponsable = op.responsable?.nombre,
+                    tipoAccion = it.tipoAccion,
+                    proximaAccion = it.proximaAccion ?: "",
+                    fechaProximo = it.fechaProximoSeguimiento.toDateMillis()
+                )
             }
-            emit(alertas)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            emit(emptyList())
         }
+        emit(alertas)
     }
 
     fun obtenerHistorialPorOrganizacion(idOrganizacion: Long, idResponsable: Long): Flow<List<GestionOrganizacion>> = flow {

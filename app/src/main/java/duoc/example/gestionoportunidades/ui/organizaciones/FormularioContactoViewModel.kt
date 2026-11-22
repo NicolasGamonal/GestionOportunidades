@@ -137,12 +137,11 @@ class FormularioContactoViewModel(
             _uiState.update { it.copy(guardando = true, mensajeError = null) }
             try {
                 // insertar devuelve el id nuevo, o 0L si la API falló (el repositorio atrapa el error).
-                // actualizar no informa si falló: eso se arregla en el paso 2b.
+                // actualizar devuelve false si la API falló.
                 val guardado = if (base == null) {
                     contactoRepository.insertar(contacto) > 0L
                 } else {
                     contactoRepository.actualizar(contacto)
-                    true
                 }
                 _uiState.update {
                     if (guardado) it.copy(guardando = false, guardadoExitoso = true)

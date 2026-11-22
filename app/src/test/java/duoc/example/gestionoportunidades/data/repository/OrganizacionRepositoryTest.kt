@@ -199,12 +199,21 @@ class OrganizacionRepositoryTest {
     }
 
     @Test
-    fun `actualizar no propaga el error de red`() = runTest {
+    fun `actualizar no propaga el error de red y devuelve false`() = runTest {
         coEvery { api.actualizarOrganizacion(any(), any()) } throws IOException("sin red")
 
-        repo.actualizar(organizacionLocal())
+        assertEquals(false, repo.actualizar(organizacionLocal()))
 
         coVerify(exactly = 1) { api.actualizarOrganizacion(any(), any()) }
+    }
+
+    @Test
+    fun `actualizar devuelve true si la API acepta y false si responde error`() = runTest {
+        coEvery { api.actualizarOrganizacion(any(), any()) } returns Response.success(orgRemota())
+        assertEquals(true, repo.actualizar(organizacionLocal()))
+
+        coEvery { api.actualizarOrganizacion(any(), any()) } returns respuestaError(500)
+        assertEquals(false, repo.actualizar(organizacionLocal()))
     }
 
     // =========================================================================

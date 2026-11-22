@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import duoc.example.gestionoportunidades.util.Catalogos
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -200,7 +201,7 @@ class SupervisorViewModelTest {
     @Test
     fun `reasignar como supervisor modifica la oportunidad con el nuevo responsable`() = runTest {
         iniciarSesionComo("SUPERVISOR", id = 1L)
-        coEvery { oportunidadRepo.modificarOportunidad(any()) } returns Unit
+        coEvery { oportunidadRepo.modificarOportunidad(any()) } returns true
         val vm = crearVm()
         val original = oportunidadLocal(idOportunidad = 10L, idResponsable = 5L)
 
@@ -228,9 +229,23 @@ class SupervisorViewModelTest {
     }
 
     @Test
+    fun `si la API rechaza la reasignacion no se muestra como exito`() = runTest {
+        iniciarSesionComo("SUPERVISOR", id = 1L)
+        coEvery { oportunidadRepo.modificarOportunidad(any()) } returns false
+        val vm = crearVm()
+
+        vm.reasignarResponsable(oportunidadLocal(), 6L)
+        advanceUntilIdle()
+
+        assertEquals(Catalogos.MENSAJE_ERROR_REASIGNAR, vm.uiState.value.mensajeError)
+        assertNull(vm.uiState.value.mensajeExito)
+        assertFalse(vm.uiState.value.isLoading)
+    }
+
+    @Test
     fun `reasignar con exito reemplaza un error anterior`() = runTest {
         iniciarSesionComo("SUPERVISOR", id = 1L)
-        coEvery { oportunidadRepo.modificarOportunidad(any()) } throws RuntimeException("falla") andThen Unit
+        coEvery { oportunidadRepo.modificarOportunidad(any()) } throws RuntimeException("falla") andThen true
         val vm = crearVm()
         vm.reasignarResponsable(oportunidadLocal(), 6L)
         advanceUntilIdle()
@@ -392,7 +407,7 @@ class SupervisorViewModelTest {
     @Test
     fun `limpiarMensajes borra el mensaje de exito`() = runTest {
         iniciarSesionComo("SUPERVISOR", id = 1L)
-        coEvery { oportunidadRepo.modificarOportunidad(any()) } returns Unit
+        coEvery { oportunidadRepo.modificarOportunidad(any()) } returns true
         val vm = crearVm()
         vm.reasignarResponsable(oportunidadLocal(), 6L)
         advanceUntilIdle()

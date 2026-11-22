@@ -122,7 +122,6 @@ class FormularioOrganizacionViewModel(
                     repository.insertar(organizacion) > 0L
                 } else {
                     repository.actualizar(organizacion)
-                    true
                 }
                 _uiState.update {
                     if (guardado) it.copy(guardando = false, guardadoExitoso = true)

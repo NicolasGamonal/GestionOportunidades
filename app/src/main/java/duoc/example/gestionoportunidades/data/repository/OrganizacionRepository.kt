@@ -83,14 +83,16 @@ class OrganizacionRepository(private val api: ApiService = RetrofitClient.apiSer
         }
     }
 
-    suspend fun actualizar(organizacion: Organizacion) {
-        try {
+    // Devuelve true solo si la API aceptó el cambio; false si respondió error o no hubo red.
+    suspend fun actualizar(organizacion: Organizacion): Boolean {
+        return try {
             api.actualizarOrganizacion(
                 id = organizacion.idOrganizacion,
                 org = organizacion.toRemoteModel(incluirId = true)
-            )
+            ).isSuccessful
         } catch (e: Exception) {
             e.printStackTrace()
+            false
         }
     }
 

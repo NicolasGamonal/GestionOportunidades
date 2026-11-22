@@ -274,7 +274,6 @@ class DefectosDocumentadosTest {
         assertNull(vm.uiState.value.mensajeError)
     }
 
-    @Ignore("DEFECTO 1: OrganizacionRepository.actualizar atrapa la excepción de red y devuelve Unit; el formulario muestra éxito")
     @Test
     fun `DEFECTO 1 - organizacion que no se pudo actualizar por falta de red no debe mostrarse como guardada`() = runTest {
         val vm = organizacionEnEdicion()
@@ -328,7 +327,6 @@ class DefectosDocumentadosTest {
         assertTrue(estado.eventosProximos.isEmpty())
     }
 
-    @Ignore("DEFECTO 3: los Flow emiten lista vacía cuando falla la red y DashboardUiState.error nunca se asigna")
     @Test
     fun `DEFECTO 3 - el dashboard sin conexion debe informar el error y no mostrarse como sin datos`() = runTest {
         coEvery { api.listarOportunidades(any()) } throws IOException("sin red")

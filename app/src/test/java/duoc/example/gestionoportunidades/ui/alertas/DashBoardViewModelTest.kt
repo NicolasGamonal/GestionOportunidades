@@ -20,12 +20,12 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import duoc.example.gestionoportunidades.util.Catalogos
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import java.io.IOException
@@ -333,10 +333,8 @@ class DashboardViewModelTest {
     // =========================================================================
 
     @Test
-    fun `caracterizacion sin datos el dashboard queda vacio y sin error`() = runTest {
-        // Hoy los repositorios convierten una falla de red en lista vacía, así que el ViewModel
-        // no puede distinguir "no hay datos" de "no hubo conexión". Esta prueba documenta que
-        // `error` queda en null en ambos casos.
+    fun `sin datos pero sin falla el dashboard queda vacio y sin error`() = runTest {
+        // "No hay datos" (listas vacías) NO es lo mismo que "falló la lectura": aquí no hay error.
         iniciarSesionComo("EJECUTIVO", id = 9L)
         stubs()
         val vm = crearVm()
@@ -348,11 +346,6 @@ class DashboardViewModelTest {
         assertFalse(vm.uiState.value.isLoading)
     }
 
-    @Ignore(
-        "Defecto 3 del plan: DashboardUiState.error existe pero ningún código lo asigna. " +
-                "Si el repositorio propaga la falla (o el ViewModel la captura), se espera error != null. " +
-                "Quitar el @Ignore cuando se corrija."
-    )
     @Test
     fun `defecto 3 una falla de lectura debe mostrarse como error`() = runTest {
         iniciarSesionComo("EJECUTIVO", id = 9L)
@@ -363,5 +356,43 @@ class DashboardViewModelTest {
         advanceUntilIdle()
 
         assertNotNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `una falla de lectura deja el mensaje de error, apaga la carga y no muestra datos`() = runTest {
+        iniciarSesionComo("EJECUTIVO", id = 9L)
+        stubs(sinContacto = flow { throw IOException("sin conexión") })
+        val vm = crearVm()
+
+        suscribir(vm.uiState)
+        advanceUntilIdle()
+
+        val s = vm.uiState.value
+        assertEquals(Catalogos.MENSAJE_ERROR_LECTURA, s.error)
+        assertFalse(s.isLoading)
+        assertTrue(s.eventosProximos.isEmpty())
+        assertTrue(s.sinContacto.isEmpty())
+    }
+
+    @Test
+    fun `cada una de las cinco consultas que falla se informa como error`() = runTest {
+        val falla = flow<Nothing> { throw IOException("sin conexión") }
+        val casos: List<() -> Unit> = listOf(
+            { stubs(proximos = falla) },
+            { stubs(gestiones = falla) },
+            { stubs(sinGestiones = falla) },
+            { stubs(sinContacto = falla) },
+            { stubs(conteos = falla) }
+        )
+        for (preparar in casos) {
+            iniciarSesionComo("EJECUTIVO", id = 9L)
+            preparar()
+            val vm = crearVm()
+
+            suscribir(vm.uiState)
+            advanceUntilIdle()
+
+            assertEquals(Catalogos.MENSAJE_ERROR_LECTURA, vm.uiState.value.error)
+        }
     }
 }

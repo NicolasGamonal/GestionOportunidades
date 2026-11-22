@@ -98,14 +98,16 @@ class ContactoRepository(private val api: ApiService = RetrofitClient.apiService
         }
     }
 
-    suspend fun actualizar(contacto: Contacto) {
-        try {
+    // Devuelve true solo si la API aceptó el cambio; false si respondió error o no hubo red.
+    suspend fun actualizar(contacto: Contacto): Boolean {
+        return try {
             api.actualizarContacto(
                 id = contacto.idContacto,
                 contacto = contacto.toRemoteModel(incluirId = true)
-            )
+            ).isSuccessful
         } catch (e: Exception) {
             e.printStackTrace()
+            false
         }
     }
 

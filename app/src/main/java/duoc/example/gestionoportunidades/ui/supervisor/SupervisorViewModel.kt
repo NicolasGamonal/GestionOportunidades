@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import duoc.example.gestionoportunidades.ui.auth.SesionManager
+import duoc.example.gestionoportunidades.util.Catalogos
 import duoc.example.gestionoportunidades.util.Permisos
 
 // ViewModel del panel del supervisor.
@@ -64,9 +65,10 @@ class SupervisorViewModel(
             try {
                 // copy() crea una copia con el idResponsable cambiado (no se muta el original)
                 val oportunidadModificada = oportunidad.copy(idResponsable = idNuevoEjecutivo)
-                oportunidadRepository.modificarOportunidad(oportunidadModificada)
+                val reasignado = oportunidadRepository.modificarOportunidad(oportunidadModificada)
                 _uiState.update {
-                    it.copy(isLoading = false, mensajeExito = "Responsable reasignado exitosamente")
+                    if (reasignado) it.copy(isLoading = false, mensajeExito = "Responsable reasignado exitosamente")
+                    else it.copy(isLoading = false, mensajeError = Catalogos.MENSAJE_ERROR_REASIGNAR)
                 }
             } catch (e: Exception) {
                 _uiState.update {

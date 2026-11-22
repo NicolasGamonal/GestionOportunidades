@@ -213,12 +213,21 @@ class ContactoRepositoryTest {
     }
 
     @Test
-    fun `actualizar no propaga el error de red`() = runTest {
+    fun `actualizar no propaga el error de red y devuelve false`() = runTest {
         coEvery { api.actualizarContacto(any(), any()) } throws IOException("sin red")
 
-        repo.actualizar(contactoLocal())
+        assertEquals(false, repo.actualizar(contactoLocal()))
 
         coVerify(exactly = 1) { api.actualizarContacto(any(), any()) }
+    }
+
+    @Test
+    fun `actualizar devuelve true si la API acepta y false si responde error`() = runTest {
+        coEvery { api.actualizarContacto(any(), any()) } returns Response.success(contactoRemoto())
+        assertEquals(true, repo.actualizar(contactoLocal()))
+
+        coEvery { api.actualizarContacto(any(), any()) } returns respuestaError(500)
+        assertEquals(false, repo.actualizar(contactoLocal()))
     }
 
     // =========================================================================
