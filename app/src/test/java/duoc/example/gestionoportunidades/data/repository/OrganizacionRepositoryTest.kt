@@ -158,6 +158,28 @@ class OrganizacionRepositoryTest {
     }
 
     @Test
+    fun `insertar envia la region de la comuna de la organizacion`() = runTest {
+        val enviada = slot<OrganizacionRemote>()
+        coEvery { api.crearOrganizacion(capture(enviada)) } returns Response.success(orgRemota(id = 44L))
+
+        repo.insertar(organizacionLocal(comuna = "Valparaíso"))
+        assertEquals("Valparaíso", enviada.captured.region)
+
+        repo.insertar(organizacionLocal(comuna = "Puente Alto"))
+        assertEquals("Región Metropolitana de Santiago", enviada.captured.region)
+    }
+
+    @Test
+    fun `una comuna fuera del catalogo envia la region historica Metropolitana`() = runTest {
+        val enviada = slot<OrganizacionRemote>()
+        coEvery { api.crearOrganizacion(capture(enviada)) } returns Response.success(orgRemota(id = 44L))
+
+        repo.insertar(organizacionLocal(comuna = "Narnia"))
+
+        assertEquals("Metropolitana", enviada.captured.region)
+    }
+
+    @Test
     fun `insertar devuelve 0 si la respuesta trae error sin cuerpo o sin id`() = runTest {
         coEvery { api.crearOrganizacion(any()) } returns respuestaError(400)
         assertEquals(0L, repo.insertar(organizacionLocal()))
@@ -186,6 +208,16 @@ class OrganizacionRepositoryTest {
         coVerify(exactly = 1) { api.actualizarOrganizacion(9L, any()) }
         assertEquals(9L, enviada.captured.id)
         assertEquals("Nuevo nombre", enviada.captured.nombre)
+    }
+
+    @Test
+    fun `actualizar envia la region de la comuna de la organizacion`() = runTest {
+        val enviada = slot<OrganizacionRemote>()
+        coEvery { api.actualizarOrganizacion(9L, capture(enviada)) } returns Response.success(orgRemota())
+
+        repo.actualizar(organizacionLocal(idOrganizacion = 9L, comuna = "Arica"))
+
+        assertEquals("Arica y Parinacota", enviada.captured.region)
     }
 
     @Test

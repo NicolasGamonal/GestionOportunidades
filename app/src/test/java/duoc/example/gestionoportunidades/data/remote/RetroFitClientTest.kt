@@ -3,7 +3,6 @@ package duoc.example.gestionoportunidades.data.remote
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
-import org.junit.Ignore
 import org.junit.Test
 
 class RetrofitClientTest {

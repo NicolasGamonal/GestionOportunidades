@@ -4,6 +4,7 @@ import duoc.example.gestionoportunidades.data.remote.ApiService
 import duoc.example.gestionoportunidades.data.remote.OrganizacionRemote
 import duoc.example.gestionoportunidades.data.remote.RetrofitClient
 import duoc.example.gestionoportunidades.model.Organizacion
+import duoc.example.gestionoportunidades.util.Regiones
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import org.json.JSONObject
@@ -28,7 +29,9 @@ class OrganizacionRepository(private val api: ApiService = RetrofitClient.apiSer
             tipo = this.tipo,
             rubro = this.rubro,
             comuna = this.comuna,
-            region = "Metropolitana",
+            // La región se deduce de la comuna (antes era siempre "Metropolitana").
+            // Si la comuna no está en el catálogo se conserva el valor histórico.
+            region = Regiones.regionDe(this.comuna) ?: "Metropolitana",
             sitioWeb = "",
             publicoAsociado = "",
             observaciones = ""

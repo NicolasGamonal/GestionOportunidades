@@ -13,31 +13,61 @@ import duoc.example.gestionoportunidades.model.Contacto
 import duoc.example.gestionoportunidades.model.ConteoEstado
 import duoc.example.gestionoportunidades.model.Oportunidad
 import duoc.example.gestionoportunidades.model.Organizacion
+import duoc.example.gestionoportunidades.util.Regiones
+import duoc.example.gestionoportunidades.util.comoHoraOrNull
+import duoc.example.gestionoportunidades.util.horaComoTexto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import org.json.JSONObject
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 
 class OportunidadRepository(private val api: ApiService = RetrofitClient.apiService) {
 
     private val zonaHoraria = ZoneId.systemDefault()
 
+    // Región que se envía cuando la comuna no está en el catálogo (valor histórico de la app).
+    private val regionPorDefecto = "Metropolitana"
+
+    // La región se deduce de la comuna del evento (antes se enviaba siempre "Metropolitana",
+    // así que un evento de Valparaíso quedaba guardado como de la Región Metropolitana).
+    private fun regionDeLaComuna(comuna: String): String = Regiones.regionDe(comuna) ?: regionPorDefecto
+
     // =========================================================================
     // 1. HELPERS DE CONVERSIÓN (Fechas y Modelos)
     // =========================================================================
 
-    private fun String?.toMillis(): Long {
+    // "yyyy-MM-dd" (se leen solo los primeros 10 caracteres) -> milisegundos.
+    // Con hora == null devuelve la medianoche del día; con hora, ese instante del día.
+    // Si la fecha falta o no se puede leer, devuelve el momento actual.
+    private fun String?.toMillis(hora: LocalTime? = null): Long {
         if (this.isNullOrBlank()) return System.currentTimeMillis()
         return try {
-            LocalDate.parse(this.take(10))
-                .atStartOfDay(zonaHoraria)
-                .toInstant()
-                .toEpochMilli()
+            val fecha = LocalDate.parse(this.take(10))
+            val inicio = if (hora == null) fecha.atStartOfDay(zonaHoraria) else fecha.atTime(hora).atZone(zonaHoraria)
+            inicio.toInstant().toEpochMilli()
         } catch (e: Exception) {
             System.currentTimeMillis()
         }
+    }
+
+    // "HH:mm - HH:mm" (hora de inicio y de término) -> par de horas; null si falta o no se puede leer.
+    // El servidor solo guarda la fecha del evento y este texto, así que la hora viaja aquí.
+    private fun String?.toHorario(): Pair<LocalTime, LocalTime>? {
+        if (this.isNullOrBlank()) return null
+        val partes = this.split("-").map { it.trim() }
+        if (partes.size != 2) return null
+        val inicio = partes[0].comoHoraOrNull() ?: return null
+        val termino = partes[1].comoHoraOrNull() ?: return null
+        return inicio to termino
+    }
+
+    // Milisegundos -> "HH:mm" en la zona horaria de la app.
+    private fun Long.toHora(): String {
+        val hora = Instant.ofEpochMilli(this).atZone(zonaHoraria).toLocalTime()
+        return horaComoTexto(hora.hour, hora.minute)
     }
 
     private fun Long.toIsoDate(): String {
@@ -48,13 +78,15 @@ class OportunidadRepository(private val api: ApiService = RetrofitClient.apiServ
     }
 
     private fun OportunidadRemote.toLocalModel(): Oportunidad {
+        // Se recupera la hora del evento desde horarioEvento; si falta o es ilegible, queda a medianoche.
+        val horario = this.horarioEvento.toHorario()
         return Oportunidad(
             idOportunidad = this.id ?: 0L,
             nombre = this.nombre,
             tipoEvento = this.tipo,
             fechaDeteccion = this.fechaDeteccion.toMillis(),
-            fechaInicio = this.fechaEvento.toMillis(),
-            fechaTermino = (this.fechaTermino ?: this.fechaEvento).toMillis(),
+            fechaInicio = this.fechaEvento.toMillis(horario?.first),
+            fechaTermino = (this.fechaTermino ?: this.fechaEvento).toMillis(horario?.second),
             comuna = this.comuna ?: "",
             publicoEsperado = this.publicoEsperado ?: 0,
             prioridad = this.prioridad,
@@ -83,10 +115,10 @@ class OportunidadRepository(private val api: ApiService = RetrofitClient.apiServ
             "fechaDeteccion" to this.fechaDeteccion.toIsoDate(),
             "fechaEvento" to this.fechaInicio.toIsoDate(),
             "fechaTermino" to this.fechaTermino.toIsoDate(),
-            "horarioEvento" to "09:00 - 18:00",
+            "horarioEvento" to "${this.fechaInicio.toHora()} - ${this.fechaTermino.toHora()}",
             "direccion" to this.comuna,
             "comuna" to this.comuna,
-            "region" to "Metropolitana",
+            "region" to regionDeLaComuna(this.comuna),
             "publicoObjetivo" to this.publicoObjetivo,
             "publicoEsperado" to this.publicoEsperado,
             "costoReferencial" to this.costoReferencial,
@@ -226,7 +258,7 @@ class OportunidadRepository(private val api: ApiService = RetrofitClient.apiServ
                 tipo = organizacion.tipo,
                 rubro = organizacion.rubro,
                 comuna = organizacion.comuna,
-                region = "Metropolitana",
+                region = regionDeLaComuna(organizacion.comuna),
                 sitioWeb = "",
                 publicoAsociado = "",
                 observaciones = ""

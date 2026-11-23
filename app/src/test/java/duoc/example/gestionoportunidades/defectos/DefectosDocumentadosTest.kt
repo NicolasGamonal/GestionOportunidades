@@ -44,7 +44,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import retrofit2.Response
@@ -53,27 +52,24 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /**
- * Defectos documentados del plan que atraviesan varias capas (Fase 4).
+ * Defectos del plan que atraviesan varias capas (Fase 4), ya CORREGIDOS en el código.
  *
  * Aquí se usan los repositorios REALES con un ApiService simulado y los ViewModels REALES, para
- * mostrar el defecto tal como lo vive el usuario: lo que responde la API llega hasta el estado de la pantalla.
+ * comprobar el comportamiento tal como lo vive el usuario: lo que responde la API llega hasta el estado
+ * de la pantalla. Estas pruebas quedan como protección contra regresiones.
  *
- * Los otros dos defectos documentados ya tienen su prueba en otro archivo:
- *  - Defecto 2 (se pierden horas y región al guardar): OportunidadRepositoryTest.
- *  - Defecto 4 (validarFecha acepta fechas inexistentes): ValidacionesTest.
+ * Los otros dos defectos tienen su prueba en otro archivo:
+ *  - Defecto 2 (se perdían la hora y la región al guardar): OportunidadRepositoryTest y OrganizacionRepositoryTest.
+ *  - Defecto 4 (validarFecha aceptaba fechas inexistentes): ValidacionesTest.
  *
- * Cómo se lee este archivo: cada defecto tiene una prueba "control" (camino feliz, pasa hoy) y una
- * prueba del defecto, que describe el comportamiento CORRECTO, falla hoy y por eso queda en @Ignore.
- * La prueba de control demuestra que el montaje de la prueba es correcto: la única diferencia entre
- * ambas es que la API falla.
+ * Cómo se lee este archivo: cada defecto tiene una prueba "control" (camino feliz) y una prueba del
+ * comportamiento correcto cuando la API falla. La prueba de control demuestra que el montaje es correcto:
+ * la única diferencia entre ambas es que la API falla.
  *
- * El equipo decide: corregir el código y quitar el @Ignore de la prueba, o dejarla ignorada
- * documentando el defecto.
- *
- *  - Defecto 1: un guardado fallido se muestra como éxito. Los repositorios atrapan toda excepción y
- *    devuelven 0L (insertar) o Unit (actualizar), y los formularios solo miran si hubo excepción.
- *  - Defecto 3: un error de red se ve igual que "sin datos". Los Flow emiten lista vacía al fallar
- *    y DashboardUiState.error nunca se asigna.
+ *  - Defecto 1: un guardado fallido ya no se muestra como éxito. Los repositorios devuelven 0L (insertar)
+ *    o false (actualizar) y los formularios muestran el error en vez de marcar guardadoExitoso.
+ *  - Defecto 3: un error de red ya no se ve igual que "sin datos". Los Flow del dashboard dejan pasar
+ *    la excepción y DashboardViewModel la convierte en DashboardUiState.error.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DefectosDocumentadosTest {

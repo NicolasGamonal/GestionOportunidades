@@ -2,7 +2,6 @@ package duoc.example.gestionoportunidades.util
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Ignore
 import org.junit.Test
 
 class ValidacionesTest {

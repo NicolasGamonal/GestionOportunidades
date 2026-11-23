@@ -32,7 +32,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import retrofit2.Response
@@ -72,8 +71,9 @@ class OportunidadRepositoryTest {
         assertEquals("Feria municipal", op.tipoEvento)
         // 00:00 de Santiago = 03:00 UTC (horario de verano, UTC-3)
         assertEquals(FechasPrueba.MARZO_01, op.fechaDeteccion)
-        assertEquals(FechasPrueba.MARZO_15, op.fechaInicio)
-        assertEquals(FechasPrueba.MARZO_16, op.fechaTermino)
+        // El horario por defecto "09:00 - 18:00" se aplica al inicio y al término (UTC-3 en marzo).
+        assertEquals(FechasPrueba.instante("2026-03-15T12:00:00Z"), op.fechaInicio)    // 15/03 09:00
+        assertEquals(FechasPrueba.instante("2026-03-16T21:00:00Z"), op.fechaTermino)   // 16/03 18:00
         assertEquals("Puente Alto", op.comuna)
         assertEquals(500, op.publicoEsperado)
         assertEquals("Alta", op.prioridad)
@@ -138,8 +138,9 @@ class OportunidadRepositoryTest {
 
         val op = repo.obtenerPorId(10L)!!
 
-        assertEquals(FechasPrueba.MARZO_15, op.fechaInicio)
-        assertEquals(FechasPrueba.MARZO_15, op.fechaTermino)
+        // Sin fecha de término, el término es el mismo día pero a la hora de término del horario.
+        assertEquals(FechasPrueba.instante("2026-03-15T12:00:00Z"), op.fechaInicio)    // 15/03 09:00
+        assertEquals(FechasPrueba.instante("2026-03-15T21:00:00Z"), op.fechaTermino)   // 15/03 18:00
     }
 
     @Test
@@ -151,7 +152,7 @@ class OportunidadRepositoryTest {
 
             val op = repo.obtenerPorId(10L)!!
 
-            assertEquals("Formato $formato", FechasPrueba.MARZO_15, op.fechaInicio)
+            assertEquals("Formato $formato", FechasPrueba.instante("2026-03-15T12:00:00Z"), op.fechaInicio)
         }
     }
 
@@ -162,8 +163,8 @@ class OportunidadRepositoryTest {
 
         val op = repo.obtenerPorId(10L)!!
 
-        // 00:00 de Santiago en julio = 04:00 UTC
-        assertEquals(FechasPrueba.instante("2026-07-10T04:00:00Z"), op.fechaInicio)
+        // 09:00 de Santiago en julio (UTC-4) = 13:00 UTC
+        assertEquals(FechasPrueba.instante("2026-07-10T13:00:00Z"), op.fechaInicio)
     }
 
     @Test
@@ -318,14 +319,10 @@ class OportunidadRepositoryTest {
         assertEquals("2026-03-15", payload.captured["fechaTermino"])
     }
 
-    // --- Defecto 2: se pierden las horas y la región al guardar y reabrir ---
+    // --- Defecto 2 (corregido): la hora y la región del evento se conservan al guardar y reabrir ---
 
-    @Ignore(
-        "DEFECTO 2: toPayloadMap envía solo la fecha y fija horarioEvento = \"09:00 - 18:00\"; " +
-                "la hora real del evento se pierde al guardar y reabrir. Quitar @Ignore al corregirlo."
-    )
     @Test
-    fun `DEFECTO guardar una oportunidad conserva la hora del evento`() = runTest {
+    fun `guardar una oportunidad conserva la hora del evento`() = runTest {
         val payload = slot<Map<String, Any?>>()
         coEvery { api.crearOportunidad(capture(payload)) } returns Response.success(oportunidadRemota())
         // Evento que parte a las 15:30 de Santiago (18:30 UTC) el 15/03/2026
@@ -337,18 +334,175 @@ class OportunidadRepositoryTest {
         assertTrue("El horario enviado debe incluir 15:30 pero fue '$horario'", horario.contains("15:30"))
     }
 
-    @Ignore(
-        "DEFECTO 2: toPayloadMap fija region = \"Metropolitana\" sin mirar la comuna del evento. " +
-                "Quitar @Ignore al corregirlo."
-    )
     @Test
-    fun `DEFECTO guardar una oportunidad conserva la region de su comuna`() = runTest {
+    fun `el horario del payload lleva la hora de inicio y la de termino`() = runTest {
+        val payload = slot<Map<String, Any?>>()
+        coEvery { api.crearOportunidad(capture(payload)) } returns Response.success(oportunidadRemota())
+
+        repo.guardarOportunidad(
+            oportunidadLocal(
+                fechaInicio = FechasPrueba.instante("2026-03-15T12:30:00Z"),    // 15/03 09:30
+                fechaTermino = FechasPrueba.instante("2026-03-16T21:45:00Z")    // 16/03 18:45
+            )
+        )
+
+        assertEquals("09:30 - 18:45", payload.captured["horarioEvento"])
+    }
+
+    @Test
+    fun `el horario del payload usa el desfase de invierno de Santiago`() = runTest {
+        val payload = slot<Map<String, Any?>>()
+        coEvery { api.crearOportunidad(capture(payload)) } returns Response.success(oportunidadRemota())
+
+        repo.guardarOportunidad(
+            oportunidadLocal(
+                fechaInicio = FechasPrueba.instante("2026-07-10T13:00:00Z"),    // 09:00 (UTC-4)
+                fechaTermino = FechasPrueba.instante("2026-07-10T22:00:00Z")    // 18:00 (UTC-4)
+            )
+        )
+
+        assertEquals("09:00 - 18:00", payload.captured["horarioEvento"])
+    }
+
+    @Test
+    fun `una oportunidad sin hora a medianoche envia 00 00 en el horario`() = runTest {
+        val payload = slot<Map<String, Any?>>()
+        coEvery { api.crearOportunidad(capture(payload)) } returns Response.success(oportunidadRemota())
+
+        repo.guardarOportunidad(oportunidadLocal())   // fechas a medianoche
+
+        assertEquals("00:00 - 00:00", payload.captured["horarioEvento"])
+    }
+
+    @Test
+    fun `obtenerPorId aplica el horario del servidor al inicio y al termino`() = runTest {
+        coEvery { api.obtenerOportunidad(10L) } returns oportunidadRemota(
+            fechaEvento = "2026-03-15", fechaTermino = "2026-03-15", horarioEvento = "15:30 - 17:45"
+        )
+
+        val op = repo.obtenerPorId(10L)!!
+
+        assertEquals(FechasPrueba.instante("2026-03-15T18:30:00Z"), op.fechaInicio)    // 15:30
+        assertEquals(FechasPrueba.instante("2026-03-15T20:45:00Z"), op.fechaTermino)   // 17:45
+    }
+
+    @Test
+    fun `el horario del servidor se lee con o sin espacios alrededor del guion`() = runTest {
+        for (horario in listOf("15:30 - 17:45", "15:30-17:45", " 15:30 -17:45 ")) {
+            coEvery { api.obtenerOportunidad(10L) } returns oportunidadRemota(
+                fechaEvento = "2026-03-15", fechaTermino = "2026-03-15", horarioEvento = horario
+            )
+
+            val op = repo.obtenerPorId(10L)!!
+
+            assertEquals("Horario '$horario'", FechasPrueba.instante("2026-03-15T18:30:00Z"), op.fechaInicio)
+            assertEquals("Horario '$horario'", FechasPrueba.instante("2026-03-15T20:45:00Z"), op.fechaTermino)
+        }
+    }
+
+    @Test
+    fun `un horario nulo vacio o ilegible deja las fechas a medianoche`() = runTest {
+        val ilegibles = listOf(null, "", "   ", "mañana", "09:00", "25:00 - 18:00", "09:00 - 61:00", "9:00 - 18:00", "09:00 - 12:00 - 18:00")
+        for (horario in ilegibles) {
+            coEvery { api.obtenerOportunidad(10L) } returns oportunidadRemota(horarioEvento = horario)
+
+            val op = repo.obtenerPorId(10L)!!
+
+            assertEquals("Horario '$horario'", FechasPrueba.MARZO_15, op.fechaInicio)
+            assertEquals("Horario '$horario'", FechasPrueba.MARZO_16, op.fechaTermino)
+        }
+    }
+
+    @Test
+    fun `un evento de varios dias puede terminar a una hora anterior a la de inicio`() = runTest {
+        coEvery { api.obtenerOportunidad(10L) } returns oportunidadRemota(
+            fechaEvento = "2026-03-15", fechaTermino = "2026-03-17", horarioEvento = "18:00 - 09:00"
+        )
+
+        val op = repo.obtenerPorId(10L)!!
+
+        assertEquals(FechasPrueba.instante("2026-03-15T21:00:00Z"), op.fechaInicio)    // 15/03 18:00
+        assertEquals(FechasPrueba.instante("2026-03-17T12:00:00Z"), op.fechaTermino)   // 17/03 09:00
+    }
+
+    @Test
+    fun `guardar y volver a abrir conserva la fecha y la hora del evento`() = runTest {
+        val payload = slot<Map<String, Any?>>()
+        coEvery { api.crearOportunidad(capture(payload)) } returns Response.success(oportunidadRemota())
+        val inicio = FechasPrueba.instante("2026-03-15T18:30:00Z")    // 15/03 15:30
+        val termino = FechasPrueba.instante("2026-03-16T20:45:00Z")   // 16/03 17:45
+
+        repo.guardarOportunidad(oportunidadLocal(fechaInicio = inicio, fechaTermino = termino))
+
+        // El servidor devuelve lo mismo que recibió.
+        coEvery { api.obtenerOportunidad(10L) } returns oportunidadRemota(
+            fechaEvento = payload.captured["fechaEvento"] as String,
+            fechaTermino = payload.captured["fechaTermino"] as String,
+            horarioEvento = payload.captured["horarioEvento"] as String
+        )
+        val reabierta = repo.obtenerPorId(10L)!!
+
+        assertEquals(inicio, reabierta.fechaInicio)
+        assertEquals(termino, reabierta.fechaTermino)
+    }
+
+    @Test
+    fun `cambiarEstado no pisa el horario del evento con el horario por defecto`() = runTest {
+        coEvery { api.obtenerOportunidad(10L) } returns oportunidadRemota(
+            fechaEvento = "2026-03-15", fechaTermino = "2026-03-15", horarioEvento = "15:30 - 17:45"
+        )
+        val payload = slot<Map<String, Any?>>()
+        coEvery { api.actualizarOportunidad(10L, 3L, capture(payload)) } returns Response.success(oportunidadRemota())
+        coEvery { api.crearSeguimiento(any()) } returns Response.success(seguimientoRemoto())
+
+        repo.cambiarEstado(10L, "Identificada", "Contacto realizado", 3L)
+
+        assertEquals("15:30 - 17:45", payload.captured["horarioEvento"])
+    }
+
+    // --- Defecto 2: la región se deduce de la comuna ---
+
+    @Test
+    fun `guardar una oportunidad conserva la region de su comuna`() = runTest {
         val payload = slot<Map<String, Any?>>()
         coEvery { api.crearOportunidad(capture(payload)) } returns Response.success(oportunidadRemota())
 
         repo.guardarOportunidad(oportunidadLocal(comuna = "Valparaíso"))
 
         assertEquals(Regiones.regionDe("Valparaíso"), payload.captured["region"])
+        assertEquals("Valparaíso", payload.captured["region"])
+    }
+
+    @Test
+    fun `la region del payload cambia segun la comuna y ya no es siempre Metropolitana`() = runTest {
+        val payload = slot<Map<String, Any?>>()
+        coEvery { api.crearOportunidad(capture(payload)) } returns Response.success(oportunidadRemota())
+
+        repo.guardarOportunidad(oportunidadLocal(comuna = "Puente Alto"))
+        assertEquals("Región Metropolitana de Santiago", payload.captured["region"])
+
+        repo.guardarOportunidad(oportunidadLocal(comuna = "Arica"))
+        assertEquals("Arica y Parinacota", payload.captured["region"])
+    }
+
+    @Test
+    fun `una comuna fuera del catalogo conserva la region historica Metropolitana`() = runTest {
+        val payload = slot<Map<String, Any?>>()
+        coEvery { api.crearOportunidad(capture(payload)) } returns Response.success(oportunidadRemota())
+
+        repo.guardarOportunidad(oportunidadLocal(comuna = "Narnia"))
+
+        assertEquals("Metropolitana", payload.captured["region"])
+    }
+
+    @Test
+    fun `modificar una oportunidad tambien envia la region de su comuna`() = runTest {
+        val payload = slot<Map<String, Any?>>()
+        coEvery { api.actualizarOportunidad(any(), any(), capture(payload)) } returns Response.success(oportunidadRemota())
+
+        repo.modificarOportunidad(oportunidadLocal(idOportunidad = 10L, comuna = "Valparaíso"))
+
+        assertEquals("Valparaíso", payload.captured["region"])
     }
 
     // =========================================================================
@@ -593,6 +747,7 @@ class OportunidadRepositoryTest {
         assertEquals("Municipalidad", enviada.captured.tipo)
         assertEquals("Gobierno local", enviada.captured.rubro)
         assertEquals("Puente Alto", enviada.captured.comuna)
+        assertEquals("Región Metropolitana de Santiago", enviada.captured.region)
         assertEquals("", enviada.captured.sitioWeb)
         assertEquals("", enviada.captured.publicoAsociado)
         assertEquals("", enviada.captured.observaciones)
